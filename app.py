@@ -1,5 +1,6 @@
 # -*- coding: utf-8 -*-
 import io
+import traceback
 import streamlit as st
 import medbot
 
@@ -24,7 +25,12 @@ if audio is not None and not text.strip():
 
 if text.strip():
     with st.spinner("Анализирую..."):
-        r = medbot.predict(text.strip())
+        try:
+            r = medbot.predict(text.strip())
+        except Exception:
+            st.error("**Отладка — полный трейсбек:**\n\n```\n"
+                     + traceback.format_exc() + "\n```")
+            st.stop()
 
     st.write(f"Ветка модели: **{r['branch']}** · маржа уверенности: **{r['margin']:.2f}**")
 
