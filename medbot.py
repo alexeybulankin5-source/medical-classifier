@@ -15,26 +15,19 @@ def get_state():
     sbert = SentenceTransformer(SBERT_MODEL)
     X = np.load(glob.glob("emb_*.npz")[0])["X"].astype(np.float32)
 
-    with open("dataset.csv", encoding="utf-8") as f:
-        text0 = next(csv.reader(f))[0].lstrip("\ufeff")
-
-    def cos(a, b):
-        a = np.asarray(a, dtype=np.float64).reshape(-1)
-        b = np.asarray(b, dtype=np.float64).reshape(-1)
-        return float(np.dot(a, b) / (np.linalg.norm(a) * np.linalg.norm(b) + 1e-9))
-
-    e_raw = np.asarray(sbert.encode([text0], convert_to_numpy=True),
-                       dtype=np.float32).reshape(-1)
-    e_norm = e_raw / (np.linalg.norm(e_raw) + 1e-9)
-    try:
-        use_norm = cos(e_norm, X[0]) >= cos(e_raw, X[0])
-    except Exception:
-        use_norm = False
-    print("MEDBOT: нормировка эмбеддингов =", use_norm)
+    # Нормировку определяем по самому датасету: средняя норма строк ~1 => нормированы.
+    # Никакого SBERT-encode и сравнения на этом шаге — только детерминированный numpy.
+    row_norms = np.linalg.norm(X, axis=1)
+    mean_norm = float(np.mean(row_norms))
+    use_norm = bool(abs(mean_norm - 1.0) < 0.05)
+    print("MEDBOT: numpy", np.__version__, "| средняя норма эталона:",
+          round(mean_norm, 4), "| нормировка =", use_norm)
 
     def embed(texts):
-        e = np.asarray(sbert.encode(texts, convert_to_numpy=True),
+        e = np.asarray(sbert.encode(list(texts), convert_to_numpy=True),
                        dtype=np.float32)
+        if e.ndim == 1:
+            e = e.reshape(1, -1)
         if use_norm:
             e = e / (np.linalg.norm(e, axis=1, keepdims=True) + 1e-9)
         return e
@@ -46,8 +39,8 @@ def _branch_name(raw, pipe):
         return str(raw)
     classes = list(pipe["router"].classes_)
     if all(isinstance(c, (str, np.str_)) for c in classes):
-        return str(classes[int(raw)])
-    return ["colloquial", "mixed"][int(raw)]
+        return str(classes[int(np.asarray(raw).item())])
+    return ["colloquial", "mixed"][int(np.asarray(raw).item())]
 
 def predict(text):
     s = get_state()
