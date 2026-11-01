@@ -1,12 +1,37 @@
 # -*- coding: utf-8 -*-
 import csv
 import glob
+import re
 import numpy as np
 import joblib
 import streamlit as st
 
 SBERT_MODEL = "ai-forever/sbert_large_nlu_ru"
 MARGIN_THRESHOLD = 0.12
+
+# --- аварийная сетка: ловим опасные комбинации симптомов ДО модели ---
+EMERGENCY = [
+    (r"болит\s+серд[це]|серд[це]\s+(болит|колет|жмёт|жет|давит|тупит)|боль\s+в\s+сердце",
+     "боль в области сердца"),
+    (r"(жмёт|давит|сжимает|сдавливает|спазм)[^.;]{0,25}(груд|за\s+грудин)",
+     "давление или сжатие в груди"),
+    (r"(отда[её]т|прострел|простреливает)[^.;]{0,20}(лев[ууюю]\s+(руку|плечо)|лопатк)",
+     "боль, отдающая в левую руку или лопатку"),
+    (r"задыхаю|не\s+хватает\s+воздуха|удуш|не\s+могу\s+дышать",
+     "внезапная нехватка воздуха"),
+    (r"перекосило\s+лицо|онемел\w*\s+(лев|прав)\w*\s+(сторона|половина)|нарушилась\s+речь|не\s+могу\s+говорить",
+     "возможные признаки инсульта"),
+    (r"(рвот\w*\s+с\s+кровью|кровь\s+в\s+стуле|кровь\s+в\s+моче|кровотечение\s+не\s+останавливается)",
+     "сильное кровотечение"),
+    (r"потерял\w*\s+сознание|обморок\w*",
+     "потеря сознания"),
+    (r"температур\w+\s+(выше|под)\s+(39|40)|не\s+сбивается",
+     "высокая температура, не сбиваемая жаропонижающими"),
+]
+
+def emergency_check(text):
+    t = text.lower()
+    return [msg for pat, msg in EMERGENCY if re.search(pat, t)]
 
 @st.cache_resource
 def get_state():
@@ -15,10 +40,21 @@ def get_state():
     sbert = SentenceTransformer(SBERT_MODEL)
     X = np.load(glob.glob("emb_*.npz")[0])["X"].astype(np.float32)
 
-    # Нормировку определяем по самому датасету: средняя норма строк ~1 => нормированы.
-    # Никакого SBERT-encode и сравнения на этом шаге — только детерминированный numpy.
-    row_norms = np.linalg.norm(X, axis=1)
-    mean_norm = float(np.mean(row_norms))
+    # метки строк датасета — для панели «похожие случаи»
+    all_labels = set()
+    for b in ("colloquial", "mixed"):
+        all_labels.update(pipe[b]["classes"])
+    with open("dataset.csv", encoding="utf-8") as f:
+        rows = list(csv.reader(f))
+    if rows and (len(rows[0]) < 2 or rows[0][1] not in all_labels):
+        rows = rows[1:]  # первая строка — заголовок
+    labels = [r[1] for r in rows if len(r) >= 2]
+    n = min(len(labels), len(X))
+    labels, Xr = labels[:n], X[:n]
+    Xn = Xr / (np.linalg.norm(Xr, axis=1, keepdims=True) + 1e-9)
+
+    # нормировка эмбеддингов — по нормам строк датасета
+    mean_norm = float(np.mean(np.linalg.norm(Xr, axis=1)))
     use_norm = bool(abs(mean_norm - 1.0) < 0.05)
     print("MEDBOT: numpy", np.__version__, "| средняя норма эталона:",
           round(mean_norm, 4), "| нормировка =", use_norm)
@@ -32,7 +68,15 @@ def get_state():
             e = e / (np.linalg.norm(e, axis=1, keepdims=True) + 1e-9)
         return e
 
-    return {"pipe": pipe, "embed": embed, "normalized": use_norm}
+    def similar_cases(text, k=5):
+        e = embed([text])[0]
+        e = e / (np.linalg.norm(e) + 1e-9)
+        sims = Xn @ e
+        idx = np.argsort(sims)[::-1][:k]
+        return [(labels[i], float(sims[i])) for i in idx]
+
+    return {"pipe": pipe, "embed": embed, "similar": similar_cases,
+            "normalized": use_norm}
 
 def _branch_name(raw, pipe):
     if isinstance(raw, (str, np.str_)):

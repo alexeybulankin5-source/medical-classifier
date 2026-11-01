@@ -24,9 +24,23 @@ if audio is not None and not text.strip():
         st.warning("Не удалось распознать речь. Введите текст вручную.")
 
 if text.strip():
+    q = text.strip()
+
+    # --- 1. Аварийная сетка: срабатывает ДО и НЕЗАВИСИМО от модели ---
+    emerg = medbot.emergency_check(q)
+    if emerg:
+        st.error(
+            "**⚠️ В вашей жалобе есть признаки, требующие срочной медицинской помощи:** "
+            + "; ".join(emerg) + "\n\n"
+            "**Это вне компетенции модели — сразу звоните в скорую:** "
+            "[103](tel:103) или [112](tel:112).\n\n"
+            "Предсказания ниже — только справочная информация, не основание откладывать вызов."
+        )
+
+    # --- 2. Предсказание модели ---
     with st.spinner("Анализирую..."):
         try:
-            r = medbot.predict(text.strip())
+            r = medbot.predict(q)
         except Exception:
             st.error("**Отладка — полный трейсбек:**\n\n```\n"
                      + traceback.format_exc() + "\n```")
@@ -53,3 +67,12 @@ if text.strip():
             st.write(medbot.advice_for(choice))
             st.markdown("**Красные флаги:**")
             st.write(" • " + "\n • ".join(medbot.RED_FLAGS))
+
+    # --- 3. Похожие случаи из базы: что реально увидела модель ---
+    try:
+        cases = get = medbot.get_state()["similar"](q, k=5)
+        st.subheader("Похожие случаи из базы")
+        for label, sim in cases:
+            st.write(f"**{label}** — сходство {sim*100:.0f}%")
+    except Exception:
+        pass
