@@ -4,9 +4,12 @@ import traceback
 import streamlit as st
 import medbot
 
+BUILD_TAG = "grid-v1"
+
 st.set_page_config(page_title="МедБот", page_icon="🩺", layout="centered")
 st.title("🩺 МедБот — первичная оценка жалоб")
 st.caption("Модель не ставит диагноз. При тревожных симптомах обратитесь к врачу.")
+st.sidebar.caption(f"build: {BUILD_TAG}")
 
 text = st.text_area("Опишите жалобы своими словами:", height=100)
 audio = st.audio_input("…или запишите голосом 🎙")
