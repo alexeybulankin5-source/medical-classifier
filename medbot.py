@@ -19,17 +19,22 @@ def get_state():
         text0 = next(csv.reader(f))[0].lstrip("\ufeff")
 
     def cos(a, b):
-        a = np.atleast_2d(a); b = np.atleast_2d(b)
-        a = a / (np.linalg.norm(a, axis=1, keepdims=True) + 1e-9)
-        b = b / (np.linalg.norm(b, axis=1, keepdims=True) + 1e-9)
-        return float(a @ b.T)
+        a = np.asarray(a, dtype=np.float64).reshape(-1)
+        b = np.asarray(b, dtype=np.float64).reshape(-1)
+        return float(np.dot(a, b) / (np.linalg.norm(a) * np.linalg.norm(b) + 1e-9))
 
-    e_raw = sbert.encode([text0], convert_to_numpy=True).astype(np.float32)
+    e_raw = np.asarray(sbert.encode([text0], convert_to_numpy=True),
+                       dtype=np.float32).reshape(-1)
     e_norm = e_raw / (np.linalg.norm(e_raw) + 1e-9)
-    use_norm = cos(e_norm, X[0]) >= cos(e_raw, X[0])
+    try:
+        use_norm = cos(e_norm, X[0]) >= cos(e_raw, X[0])
+    except Exception:
+        use_norm = False
+    print("MEDBOT: нормировка эмбеддингов =", use_norm)
 
     def embed(texts):
-        e = sbert.encode(texts, convert_to_numpy=True).astype(np.float32)
+        e = np.asarray(sbert.encode(texts, convert_to_numpy=True),
+                       dtype=np.float32)
         if use_norm:
             e = e / (np.linalg.norm(e, axis=1, keepdims=True) + 1e-9)
         return e
@@ -37,13 +42,11 @@ def get_state():
     return {"pipe": pipe, "embed": embed, "normalized": use_norm}
 
 def _branch_name(raw, pipe):
-    """Роутер может возвращать и строку, и индекс — сводим оба случая к имени ветки."""
     if isinstance(raw, (str, np.str_)):
         return str(raw)
     classes = list(pipe["router"].classes_)
     if all(isinstance(c, (str, np.str_)) for c in classes):
         return str(classes[int(raw)])
-    # числовые метки: порядок алфавитный — 0 -> colloquial, 1 -> mixed
     return ["colloquial", "mixed"][int(raw)]
 
 def predict(text):
