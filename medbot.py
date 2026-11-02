@@ -1,7 +1,7 @@
 # -*- coding: utf-8 -*-
 import os, re, numpy as np, joblib, streamlit as st
 
-VERSION = "v13o-gap013"
+VERSION = "v13p-2d"
 SBERT_MODEL = "cointegrated/rubert-tiny2"
 MARGIN_THRESHOLD = 0.10
 SIM_EXACT = 0.92
@@ -10,6 +10,7 @@ W_MODEL, W_SIM = 0.35, 0.65
 SIM_MIN_HIGH = 0.60  # минимум похожести на базу для high/medium
 GAP_MIN = 0.13     # отрыв лучшего класса от медианы (GOOD мин 0.153, BAD многсловный макс 0.103)
 MIN_WORDS = 2       # минимум содержательных слов для уверенного ответа
+SIM_ABS = 0.755    # либо высокая абсолютная похожесть, либо отрыв от медианы
 
 EMERGENCY = [
     (r"болит\s+серд[це]|серд[це]\s+(болит|колет|жмёт|жет|давит|тупит)|боль\s+в\s+сердце", "боль в области сердца"),
@@ -186,7 +187,7 @@ def predict(text):
     med_sim = float(np.median(list(sims.values()))) if sims else 0.0
     sim_gap = sim_top - med_sim
     n_words = len(re.findall(r"[а-яёa-z]{2,}", text.lower()))
-    ok_sanity = n_words >= MIN_WORDS and sim_gap >= GAP_MIN
+    ok_sanity = n_words >= MIN_WORDS and (sim_gap >= GAP_MIN or sim_top >= SIM_ABS)
     if nn_sim >= 0.97:
         tier = "high"
     elif ok_sanity and (sim_top >= 0.85 or margin >= 0.08):
