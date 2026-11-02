@@ -1,14 +1,14 @@
 # -*- coding: utf-8 -*-
 import os, re, numpy as np, joblib, streamlit as st
 
-VERSION = "v13p-2d"
+VERSION = "v13q-final"
 SBERT_MODEL = "cointegrated/rubert-tiny2"
 MARGIN_THRESHOLD = 0.10
 SIM_EXACT = 0.92
 BRANCHES = ["colloquial", "mixed"]
 W_MODEL, W_SIM = 0.35, 0.65
 SIM_MIN_HIGH = 0.60  # минимум похожести на базу для high/medium
-GAP_MIN = 0.13     # отрыв лучшего класса от медианы (GOOD мин 0.153, BAD многсловный макс 0.103)
+GAP_MIN = 0.145    # отрыв от медианы: GOOD мин 0.153, BAD макс 0.138 (по измерению)
 MIN_WORDS = 2       # минимум содержательных слов для уверенного ответа
 SIM_ABS = 0.755    # либо высокая абсолютная похожесть, либо отрыв от медианы
 
