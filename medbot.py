@@ -1,7 +1,7 @@
 # -*- coding: utf-8 -*-
 import os, re, numpy as np, joblib, streamlit as st
 
-VERSION = "v11-hybrid-plus"
+VERSION = "v11-hybrid-tiebreak"
 SBERT_MODEL = "ai-forever/sbert_large_nlu_ru"
 MARGIN_THRESHOLD = 0.12
 BRANCHES = ["colloquial", "mixed"]
@@ -107,9 +107,10 @@ def predict(text):
     scores = {c: W_MODEL * model_scores.get(c, 0.0) + W_SIM * sims.get(c, 0.0)
               for c in classes}
     if is_cardio_alert(text):
+        # буст пропорционален сходству с эталоном: сильнее совпадение — больше прибавка
         for c in classes:
             if any(k in c.lower() for k in CARDIO_KEYS):
-                scores[c] += CARDIO_BOOST
+                scores[c] += CARDIO_BOOST * sims.get(c, 0.0)
     top = sorted(scores.items(), key=lambda kv: -kv[1])[:3]
     margin = top[0][1] - top[1][1]
     branch = _branch_name(s["pipe"]["router"].predict(emb)[0], s["pipe"])
