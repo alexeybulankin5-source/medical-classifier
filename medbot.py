@@ -1,7 +1,7 @@
 # -*- coding: utf-8 -*-
 import os, re, numpy as np, joblib, streamlit as st
 
-VERSION = "v13f-guard"
+VERSION = "v13h-infarct"
 SBERT_MODEL = "cointegrated/rubert-tiny2"
 MARGIN_THRESHOLD = 0.10
 SIM_EXACT = 0.92
@@ -16,7 +16,7 @@ EMERGENCY = [
     (r"(отда[её]т|прострел|простреливает)[^.;]{0,20}(лев[ууюю]\s+(руку|плечо)|лопатк)", "боль, отдающая в левую руку или лопатку"),
     (r"задыхаю|не\s+хватает\s+воздуха|удуш|не\s+могу\s+дышать", "внезапная нехватка воздуха"),
     (r"перекосило\s+лицо|онемел\w*\s+(лев|прав)\w*\s+(сторона|половина)|нарушилась\s+речь|не\s+могу\s+говорить", "возможные признаки инсульта"),
-    (r"(рвот\w*\s+с\s+кровью|кровь\s+в\s+стуле|кровь\s+в\s+моче|кровотечение\s+не\s+останавливается)", "сильное кровотечение"),
+    (r"(рв\w*\s+(с\s+)?кровью|кровь\s+в\s+(стуле|моче)|кровотечение\s+не\s+останавливается|сильное\s+кровотечение)", "сильное кровотечение"),
     (r"потерял\w*\s+сознание|обморок\w*", "потеря сознания"),
     (r"температур\w+\s+(выше|под)\s+(39|40)|не\s+сбивается", "высокая температура, не сбиваемая жаропонижающими"),
 ]
@@ -145,6 +145,16 @@ def predict(text):
         for c in scores:
             if any(k in c.lower() for k in ("стенокардия", "аритмия", "инфаркт")):
                 scores[c] -= neg
+    if "инфаркт" in rules:
+        for c in scores:
+            if "инфаркт" in c.lower():
+                scores[c] = max(scores.values()) + 0.02
+                break
+    if "инфаркт" in rules:
+        for c in scores:
+            if "инфаркт" in c.lower():
+                scores[c] = max(scores.values()) + 0.02
+                break
     top = sorted(scores.items(), key=lambda kv: -kv[1])[:3]
     margin = top[0][1] - top[1][1]
     top_rule = max((b for key, b in rules.items() if key in top[0][0].lower()), default=0.0)
