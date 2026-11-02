@@ -1,7 +1,7 @@
 # -*- coding: utf-8 -*-
 import os, re, numpy as np, joblib, streamlit as st
 
-VERSION = "v13i-redflag"
+VERSION = "v13k-routing"
 SBERT_MODEL = "cointegrated/rubert-tiny2"
 MARGIN_THRESHOLD = 0.10
 SIM_EXACT = 0.92
@@ -114,8 +114,14 @@ def get_state(cache_key):
             out[lbl] = float(np.mean(arr[:3]))
         return out
 
+    def exact_match(text):
+        e = embed([text])[0]
+        sims_all = Xn @ e
+        i = int(np.argmax(sims_all))
+        return labels[i], float(sims_all[i])
+
     return {"pipe": pipe, "embed": embed, "similar": similar_cases,
-            "class_sims": class_sims}
+            "class_sims": class_sims, "exact_match": exact_match}
 
 def _branch_name(raw, pipe):
     if isinstance(raw, str):
@@ -126,13 +132,18 @@ def predict(text):
     s = get_state(cache_key())
     emb = s["embed"]([text])
     sims = s["class_sims"](text)
+    rb = s["pipe"]["router"].predict_proba(emb)[0]
+    rnames = [str(n) for n in s["pipe"]["router"].classes_]
+    rw = {n: float(p) for n, p in zip(rnames, rb)}
     model_scores = {}
     for name in BRANCHES:
         sub = s["pipe"][name]
         proba = sub["model"].predict_proba(emb)[0]
+        # вес ветки: основная ветка не глушится, побочная масштабируется роутером
+        w = 1.0 if name == "colloquial" else rw.get(name, 0.0)
         for i, c in enumerate(sub["classes"]):
             c = str(c)
-            p = float(proba[i])
+            p = float(proba[i]) * w
             if p > model_scores.get(c, 0.0):
                 model_scores[c] = p
     classes = set(model_scores) | set(sims)
@@ -159,13 +170,12 @@ def predict(text):
     conf_thresh = 0.05 if neg > 0.0 else MARGIN_THRESHOLD
     confident = (margin >= conf_thresh or sims.get(top[0][0], 0.0) >= SIM_EXACT
                  or top_rule > 0.0)
-    # NN-GUARD: совпадение с эталоном на 0.97+ сильнее классификатора и правил
-    if sims:
-        nn_cls = max(sims, key=lambda c: sims.get(c, 0.0))
-        if sims.get(nn_cls, 0.0) >= 0.97:
-            top = [(nn_cls, max(top[0][1], min(sims[nn_cls], 0.99)))] + \
-                  [(c, v) for c, v in top if c != nn_cls]
-            confident = True
+    # NN-GUARD v2: точное совпадение с одной эталонной фразой на 0.97+
+    nn_lbl, nn_sim = s["exact_match"](text)
+    if nn_sim >= 0.97 and "инфаркт" not in rules:
+        top = [(nn_lbl, max(top[0][1], min(nn_sim, 0.99)))] + \
+              [(c, v) for c, v in top if c != nn_lbl]
+        confident = True
     branch = _branch_name(s["pipe"]["router"].predict(emb)[0], s["pipe"])
     return {"branch": branch, "top": top, "margin": margin, "confident": confident}
 
