@@ -1,13 +1,15 @@
 # -*- coding: utf-8 -*-
 import os, re, numpy as np, joblib, streamlit as st
 
-VERSION = "v13m-saniti"
+VERSION = "v13n-relsaniti"
 SBERT_MODEL = "cointegrated/rubert-tiny2"
 MARGIN_THRESHOLD = 0.10
 SIM_EXACT = 0.92
 BRANCHES = ["colloquial", "mixed"]
 W_MODEL, W_SIM = 0.35, 0.65
 SIM_MIN_HIGH = 0.60  # минимум похожести на базу для high/medium
+GAP_MIN = 0.05     # отрыв лучшего класса от медианы по всем классам
+MIN_WORDS = 2       # минимум содержательных слов для уверенного ответа
 
 EMERGENCY = [
     (r"болит\s+серд[це]|серд[це]\s+(болит|колет|жмёт|жет|давит|тупит)|боль\s+в\s+сердце", "боль в области сердца"),
@@ -181,12 +183,16 @@ def predict(text):
     # шкала уверенности: high — отвечаем как есть, medium — ответ + альтернативы,
     # low — уточняющий вопрос
     sim_top = sims.get(top[0][0], 0.0)
+    med_sim = float(np.median(list(sims.values()))) if sims else 0.0
+    sim_gap = sim_top - med_sim
+    n_words = len(re.findall(r"[а-яёa-z]{2,}", text.lower()))
+    ok_sanity = n_words >= MIN_WORDS and sim_gap >= GAP_MIN
     if nn_sim >= 0.97:
         tier = "high"
-    elif sim_top >= 0.85 or (margin >= 0.08 and sim_top >= SIM_MIN_HIGH):
+    elif ok_sanity and (sim_top >= 0.85 or margin >= 0.08):
         tier = "high"
-    elif margin >= 0.03 or sim_top >= 0.68:
-        tier = "medium" if sim_top >= SIM_MIN_HIGH else "low"
+    elif ok_sanity and (margin >= 0.03 or sim_top >= 0.68):
+        tier = "medium"
     else:
         tier = "low"
     return {"branch": branch, "top": top, "margin": margin,
