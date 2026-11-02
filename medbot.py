@@ -1,7 +1,7 @@
 # -*- coding: utf-8 -*-
 import os, re, numpy as np, joblib, streamlit as st
 
-VERSION = "v14-release"
+VERSION = "v15-expansion"
 SBERT_MODEL = "cointegrated/rubert-tiny2"
 MARGIN_THRESHOLD = 0.10
 SIM_EXACT = 0.92
