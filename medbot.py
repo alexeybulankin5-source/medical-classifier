@@ -159,6 +159,13 @@ def predict(text):
     conf_thresh = 0.05 if neg > 0.0 else MARGIN_THRESHOLD
     confident = (margin >= conf_thresh or sims.get(top[0][0], 0.0) >= SIM_EXACT
                  or top_rule > 0.0)
+    # NN-GUARD: совпадение с эталоном на 0.97+ сильнее классификатора и правил
+    if sims:
+        nn_cls = max(sims, key=lambda c: sims.get(c, 0.0))
+        if sims.get(nn_cls, 0.0) >= 0.97:
+            top = [(nn_cls, max(top[0][1], min(sims[nn_cls], 0.99)))] + \
+                  [(c, v) for c, v in top if c != nn_cls]
+            confident = True
     branch = _branch_name(s["pipe"]["router"].predict(emb)[0], s["pipe"])
     return {"branch": branch, "top": top, "margin": margin, "confident": confident}
 
