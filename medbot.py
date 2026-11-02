@@ -22,8 +22,17 @@ def emergency_check(text):
     t = text.lower()
     return [msg for pat, msg in EMERGENCY if re.search(pat, t)]
 
+def cache_key():
+    parts = []
+    for f in ("pipeline.joblib", "emb_all.npz", "labels.npy", "medbot.py", "app.py"):
+        try:
+            parts.append(str(os.path.getmtime(f)))
+        except OSError:
+            parts.append("0")
+    return "|".join(parts)
+
 @st.cache_resource
-def get_state():
+def get_state(cache_key):
     from sentence_transformers import SentenceTransformer
     pipe = joblib.load("pipeline.joblib")
     sbert = SentenceTransformer(SBERT_MODEL)
@@ -60,7 +69,7 @@ def _branch_name(raw, pipe):
     return BRANCHES[int(np.asarray(raw).item())]
 
 def predict(text):
-    s = get_state()
+    s = get_state(cache_key())
     emb = s["embed"]([text])
     # объединяем вероятности обеих веток: ошибка роутера не влияет на топ диагнозов
     scores = {}

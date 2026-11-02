@@ -19,7 +19,7 @@ _msrc = open("medbot.py", encoding="utf-8").read()
 _diag["dedup"] = "есть" if "seen.add" in _msrc else "НЕТ"
 _diag["predict"] = "union веток" if "объединяем" in _msrc else "старый — одна ветка"
 
-st.sidebar.markdown("**build: grid-v6**")
+st.sidebar.markdown("**build: grid-v7**")
 st.sidebar.caption(f"модель colloquial: {_diag.get('model', '?')}")
 st.sidebar.caption(f"стенокардия в классах: {_diag.get('cardio', '?')}")
 st.sidebar.caption(f"эталон: {_diag.get('rows', '?')} строк · дедуп: {_diag.get('dedup', '?')}")
@@ -48,5 +48,5 @@ if st.button("🩺 Поставить предварительный диагн�
         for name, p in r["top"]:
             st.markdown(f"- **{name}** — {p*100:.0f}%")
         st.subheader("Похожие случаи из базы")
-        for name, sim in medbot.get_state()["similar"](text, k=3):
+        for name, sim in medbot.get_state(medbot.cache_key())["similar"](text, k=3):
             st.markdown(f"- {name} — сходство {sim*100:.0f}%")
