@@ -82,11 +82,39 @@ def cache_key():
             parts.append("0")
     return "|".join(parts)
 
+class E5ONNX:
+    """Лёгкий рантайм e5-small: ONNX int8, собирается из кусков, query-префикс вшит."""
+    def __init__(self, dir_name="e5_onnx"):
+        import glob as _g, os as _os
+        import onnxruntime as _ort
+        from transformers import AutoTokenizer
+        parts = sorted(_g.glob(_os.path.join(dir_name, "parts_*")))
+        target = _os.path.join("/tmp", "e5_int8.onnx")
+        if parts:
+            if not _os.path.exists(target):
+                with open(target, "wb") as out:
+                    for p in parts:
+                        with open(p, "rb") as f:
+                            out.write(f.read())
+            model_file = target
+        else:
+            model_file = _g.glob(_os.path.join(dir_name, "model_quantized.onnx"))[0]
+        self.tok = AutoTokenizer.from_pretrained(dir_name)
+        self.sess = _ort.InferenceSession(model_file, providers=["CPUExecutionProvider"])
+    def encode(self, X, convert_to_numpy=True, **kw):
+        import numpy as _np
+        texts = X if isinstance(X, list) else [X]
+        texts = ["query: " + t if not str(t).startswith(("query: ", "passage: ")) else t for t in texts]
+        enc = self.tok(texts, padding=True, truncation=True, max_length=64, return_tensors="np")
+        feed = {i.name: enc[i.name].astype(_np.int64) for i in self.sess.get_inputs() if i.name in enc}
+        return self.sess.run(None, feed)[0]
+
+
 @st.cache_resource
 def get_state(cache_key):
     from sentence_transformers import SentenceTransformer
     pipe = joblib.load("pipeline.joblib")
-    sbert = SentenceTransformer(SBERT_MODEL)
+    sbert = E5ONNX()
     X = np.load("emb_all.npz")["X"].astype(np.float32)
     labels = [str(x) for x in np.load("labels.npy", allow_pickle=True)]
     n = min(len(labels), len(X))
