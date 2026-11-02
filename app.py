@@ -6,8 +6,24 @@ st.set_page_config(page_title="МедБот", page_icon="🩺")
 st.title("🩺 МедБот — первичная оценка жалоб")
 st.caption("Модель не ставит диагноз. При тревожных симптомах обратитесь к врачу.")
 
-st.sidebar.markdown("**build: grid-v4**")
-st.sidebar.caption("76+ диагнозов · SBERT · LinearSVC")
+_diag = {}
+try:
+    import joblib, numpy as np
+    pd_ = joblib.load("pipeline.joblib")
+    _diag["model"] = type(pd_["colloquial"]["model"]).__name__
+    _diag["cardio"] = "да" if "стенокардия" in set(map(str, pd_["colloquial"]["classes"])) else "НЕТ"
+    _diag["rows"] = np.load("emb_all.npz")["X"].shape[0]
+except Exception as e:
+    _diag["model"] = "ошибка: " + str(e)[:60]
+_msrc = open("medbot.py", encoding="utf-8").read()
+_diag["dedup"] = "есть" if "seen.add" in _msrc else "НЕТ"
+_diag["predict"] = "union веток" if "объединяем" in _msrc else "старый — одна ветка"
+
+st.sidebar.markdown("**build: grid-v6**")
+st.sidebar.caption(f"модель colloquial: {_diag.get('model', '?')}")
+st.sidebar.caption(f"стенокардия в классах: {_diag.get('cardio', '?')}")
+st.sidebar.caption(f"эталон: {_diag.get('rows', '?')} строк · дедуп: {_diag.get('dedup', '?')}")
+st.sidebar.caption(f"predict: {_diag.get('predict', '?')}")
 
 text = st.text_area("Опишите жалобы своими словами:", height=100)
 

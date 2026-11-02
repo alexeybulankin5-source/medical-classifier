@@ -62,12 +62,19 @@ def _branch_name(raw, pipe):
 def predict(text):
     s = get_state()
     emb = s["embed"]([text])
-    branch = _branch_name(s["pipe"]["router"].predict(emb)[0], s["pipe"])
-    sub = s["pipe"][branch]
-    proba = sub["model"].predict_proba(emb)[0]
-    order = np.argsort(proba)[::-1][:3]
-    top = [(sub["classes"][i], float(proba[i])) for i in order]
+    # объединяем вероятности обеих веток: ошибка роутера не влияет на топ диагнозов
+    scores = {}
+    for name in BRANCHES:
+        sub = s["pipe"][name]
+        proba = sub["model"].predict_proba(emb)[0]
+        for i, c in enumerate(sub["classes"]):
+            c = str(c)
+            p = float(proba[i])
+            if p > scores.get(c, 0.0):
+                scores[c] = p
+    top = sorted(scores.items(), key=lambda kv: -kv[1])[:3]
     margin = top[0][1] - top[1][1]
+    branch = _branch_name(s["pipe"]["router"].predict(emb)[0], s["pipe"])
     return {"branch": branch, "top": top, "margin": margin,
             "confident": margin >= MARGIN_THRESHOLD}
 
