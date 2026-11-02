@@ -1,10 +1,11 @@
 # -*- coding: utf-8 -*-
 import os, re, numpy as np, joblib, streamlit as st
 
-VERSION = "v11-hybrid-tiebreak"
+VERSION = "v12-balanced"
 SBERT_MODEL = "ai-forever/sbert_large_nlu_ru"
-MARGIN_THRESHOLD = 0.12
+MARGIN_THRESHOLD = 0.10
 BRANCHES = ["colloquial", "mixed"]
+SIM_EXACT = 0.92   # совпадение с эталоном, дающее уверенность без маржи
 W_MODEL, W_SIM = 0.35, 0.65
 CARDIO_KEYS = ["стенокардия", "инфаркт", "аритмия"]
 CARDIO_BOOST = 0.30
@@ -113,9 +114,10 @@ def predict(text):
                 scores[c] += CARDIO_BOOST * sims.get(c, 0.0)
     top = sorted(scores.items(), key=lambda kv: -kv[1])[:3]
     margin = top[0][1] - top[1][1]
+    # уверен, если развёл классы по марже ИЛИ топ совпал с эталоном почти дословно
+    confident = margin >= MARGIN_THRESHOLD or sims.get(top[0][0], 0.0) >= SIM_EXACT
     branch = _branch_name(s["pipe"]["router"].predict(emb)[0], s["pipe"])
-    return {"branch": branch, "top": top, "margin": margin,
-            "confident": margin >= MARGIN_THRESHOLD}
+    return {"branch": branch, "top": top, "margin": margin, "confident": confident}
 
 ADVICE = {
     "грипп": "Постельный режим 3–5 дней, обильное тёплое питьё, жаропонижающее при температуре выше 38.5.",
