@@ -4,6 +4,7 @@ import os, re, numpy as np, joblib, streamlit as st
 SBERT_MODEL = "ai-forever/sbert_large_nlu_ru"
 MARGIN_THRESHOLD = 0.12
 BRANCHES = ["colloquial", "mixed"]
+W_MODEL, W_SIM = 0.5, 0.5   # вес модели и вес сходства с эталоном
 
 EMERGENCY = [
     (r"болит\s+серд[це]|серд[це]\s+(болит|колет|жмёт|жет|давит|тупит)|боль\s+в\s+сердце", "боль в области сердца"),
@@ -50,7 +51,6 @@ def get_state(cache_key):
 
     def similar_cases(text, k=5):
         e = embed([text])[0]
-        e = e / (np.linalg.norm(e) + 1e-9)
         sims = Xn @ e
         idx = np.argsort(sims)[::-1]
         out, seen = [], set()
@@ -63,7 +63,18 @@ def get_state(cache_key):
                 break
         return out
 
-    return {"pipe": pipe, "embed": embed, "similar": similar_cases}
+    # максимум сходства по каждому классу: словарь класс -> 0..1
+    def class_sims(text):
+        e = embed([text])[0]
+        sims = Xn @ e
+        best = {}
+        for lbl, s in zip(labels, sims):
+            if s > best.get(lbl, -1.0):
+                best[lbl] = float(s)
+        return best
+
+    return {"pipe": pipe, "embed": embed, "similar": similar_cases,
+            "class_sims": class_sims}
 
 def _branch_name(raw, pipe):
     return BRANCHES[int(np.asarray(raw).item())]
@@ -71,16 +82,20 @@ def _branch_name(raw, pipe):
 def predict(text):
     s = get_state(cache_key())
     emb = s["embed"]([text])
-    # объединяем вероятности обеих веток: ошибка роутера не влияет на топ диагнозов
-    scores = {}
+    sims = s["class_sims"](text)
+    # объединяем вероятности обеих веток, затем смешиваем со сходством из эталона
+    model_scores = {}
     for name in BRANCHES:
         sub = s["pipe"][name]
         proba = sub["model"].predict_proba(emb)[0]
         for i, c in enumerate(sub["classes"]):
             c = str(c)
             p = float(proba[i])
-            if p > scores.get(c, 0.0):
-                scores[c] = p
+            if p > model_scores.get(c, 0.0):
+                model_scores[c] = p
+    classes = set(model_scores) | set(sims)
+    scores = {c: W_MODEL * model_scores.get(c, 0.0) + W_SIM * sims.get(c, 0.0)
+              for c in classes}
     top = sorted(scores.items(), key=lambda kv: -kv[1])[:3]
     margin = top[0][1] - top[1][1]
     branch = _branch_name(s["pipe"]["router"].predict(emb)[0], s["pipe"])

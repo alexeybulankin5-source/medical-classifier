@@ -21,11 +21,11 @@ _msrc = open("medbot.py", encoding="utf-8").read()
 _diag["dedup"] = "есть" if "seen.add" in _msrc else "НЕТ"
 _diag["predict"] = "union веток" if "объединяем" in _msrc else "старый — одна ветка"
 
-st.sidebar.markdown("**build: grid-v8**")
+st.sidebar.markdown("**build: grid-v9**")
 st.sidebar.caption(f"модель colloquial: {_diag.get('model', '?')}")
 st.sidebar.caption(f"стенокардия в классах: {_diag.get('cardio', '?')}")
 st.sidebar.caption(f"эталон: {_diag.get('rows', '?')} строк · дедуп: {_diag.get('dedup', '?')}")
-st.sidebar.caption(f"predict: {_diag.get('predict', '?')}")
+st.sidebar.caption(f"predict: гибрид модель+соседи")
 
 text = st.text_area("Опишите жалобы своими словами:", height=100)
 
