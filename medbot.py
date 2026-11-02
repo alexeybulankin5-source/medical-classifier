@@ -1,11 +1,13 @@
 # -*- coding: utf-8 -*-
 import os, re, numpy as np, joblib, streamlit as st
 
-VERSION = "v10-hybrid"          # честная метка живёт в самом medbot
+VERSION = "v11-hybrid-plus"
 SBERT_MODEL = "ai-forever/sbert_large_nlu_ru"
 MARGIN_THRESHOLD = 0.12
 BRANCHES = ["colloquial", "mixed"]
-W_MODEL, W_SIM = 0.5, 0.5       # вес модели и вес сходства с эталоном
+W_MODEL, W_SIM = 0.35, 0.65
+CARDIO_KEYS = ["стенокардия", "инфаркт", "аритмия"]
+CARDIO_BOOST = 0.30
 
 EMERGENCY = [
     (r"болит\s+серд[це]|серд[це]\s+(болит|колет|жмёт|жет|давит|тупит)|боль\s+в\s+сердце", "боль в области сердца"),
@@ -23,6 +25,11 @@ EMERGENCY = [
 def emergency_check(text):
     t = text.lower()
     return [msg for pat, msg in EMERGENCY if re.search(pat, t)]
+
+def is_cardio_alert(text):
+    t = text.lower()
+    heart = [pat for pat, _ in EMERGENCY[:5]]
+    return any(re.search(p, t) for p in heart)
 
 def cache_key():
     parts = []
@@ -64,14 +71,18 @@ def get_state(cache_key):
                 break
         return out
 
+    # сходство класса = среднее трёх лучших эталонов (устойчиво к выбросам)
     def class_sims(text):
         e = embed([text])[0]
         sims = Xn @ e
-        best = {}
+        per = {}
         for lbl, s in zip(labels, sims):
-            if s > best.get(lbl, -1.0):
-                best[lbl] = float(s)
-        return best
+            per.setdefault(lbl, []).append(float(s))
+        out = {}
+        for lbl, arr in per.items():
+            arr.sort(reverse=True)
+            out[lbl] = float(np.mean(arr[:3]))
+        return out
 
     return {"pipe": pipe, "embed": embed, "similar": similar_cases,
             "class_sims": class_sims}
@@ -95,6 +106,10 @@ def predict(text):
     classes = set(model_scores) | set(sims)
     scores = {c: W_MODEL * model_scores.get(c, 0.0) + W_SIM * sims.get(c, 0.0)
               for c in classes}
+    if is_cardio_alert(text):
+        for c in classes:
+            if any(k in c.lower() for k in CARDIO_KEYS):
+                scores[c] += CARDIO_BOOST
     top = sorted(scores.items(), key=lambda kv: -kv[1])[:3]
     margin = top[0][1] - top[1][1]
     branch = _branch_name(s["pipe"]["router"].predict(emb)[0], s["pipe"])
