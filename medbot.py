@@ -117,8 +117,8 @@ class E5ONNX:
         feed = {k: v for k, v in {"input_ids": ids, "attention_mask": mask}.items()
                 if any(i.name == k for i in self.sess.get_inputs())}
         out = self.sess.run(None, feed)[0]
-        m = mask.astype(_np.float32)[..., None]
-        emb = (out * m).sum(1) / _np.clip(m.sum(1), 1e-9, None)
+        # враппер уже усреднил по токенам и нормализовал: out = (batch, 384)
+        emb = out if out.ndim == 2 else out.reshape(len(texts), -1)
         return emb / _np.clip(_np.linalg.norm(emb, axis=1, keepdims=True), 1e-9, None)
 
 
