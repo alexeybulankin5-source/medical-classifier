@@ -1,2 +1,5 @@
 __pycache__/
 *.pyc
+
+model_fp32.onnx*
+model_fp32.onnx.data
