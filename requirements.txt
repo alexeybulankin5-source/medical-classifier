@@ -1,11 +1,7 @@
 streamlit
-sentence-transformers
-torch
-transformers
-joblib
-scikit-learn
 numpy
-pandas
-SpeechRecognition
 onnxruntime
 tokenizers
+joblib
+scikit-learn
+pandas
