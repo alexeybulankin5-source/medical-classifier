@@ -1,7 +1,7 @@
 # -*- coding: utf-8 -*-
 import os, re, numpy as np, joblib, streamlit as st
 
-VERSION = "v13k-routing"
+VERSION = "v13l-confidence"
 SBERT_MODEL = "cointegrated/rubert-tiny2"
 MARGIN_THRESHOLD = 0.10
 SIM_EXACT = 0.92
@@ -177,7 +177,19 @@ def predict(text):
               [(c, v) for c, v in top if c != nn_lbl]
         confident = True
     branch = _branch_name(s["pipe"]["router"].predict(emb)[0], s["pipe"])
-    return {"branch": branch, "top": top, "margin": margin, "confident": confident}
+    # шкала уверенности: high — отвечаем как есть, medium — ответ + альтернативы,
+    # low — уточняющий вопрос
+    sim_top = sims.get(top[0][0], 0.0)
+    if nn_sim >= 0.97:
+        tier = "high"
+    elif margin >= 0.08 or sim_top >= 0.85:
+        tier = "high"
+    elif margin >= 0.03 or sim_top >= 0.68:
+        tier = "medium"
+    else:
+        tier = "low"
+    return {"branch": branch, "top": top, "margin": margin,
+            "confident": confident, "confidence": tier}
 
 ADVICE = {
     "грипп": "Постельный режим 3–5 дней, обильное тёплое питьё, жаропонижающее при температуре выше 38.5.",
