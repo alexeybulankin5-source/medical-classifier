@@ -1,6 +1,5 @@
 # -*- coding: utf-8 -*-
-import csv
-import glob
+import os
 import re
 import numpy as np
 import joblib
@@ -8,11 +7,15 @@ import streamlit as st
 
 SBERT_MODEL = "ai-forever/sbert_large_nlu_ru"
 MARGIN_THRESHOLD = 0.12
+BRANCHES = ["colloquial", "mixed"]
 
-# --- аварийная сетка: ловим опасные комбинации симптомов ДО модели ---
 EMERGENCY = [
     (r"болит\s+серд[це]|серд[це]\s+(болит|колет|жмёт|жет|давит|тупит)|боль\s+в\s+сердце",
      "боль в области сердца"),
+    (r"болит\s+за\s+грудиной|за\s+грудиной[^.;]{0,10}болит",
+     "боль за грудиной"),
+    (r"липк\w*\s+пот|холодн\w*\s+пот",
+     "липкий или холодный пот — типичный признак сердечного приступа"),
     (r"(жмёт|давит|сжимает|сдавливает|спазм)[^.;]{0,25}(груд|за\s+грудин)",
      "давление или сжатие в груди"),
     (r"(отда[её]т|прострел|простреливает)[^.;]{0,20}(лев[ууюю]\s+(руку|плечо)|лопатк)",
@@ -38,26 +41,28 @@ def get_state():
     from sentence_transformers import SentenceTransformer
     pipe = joblib.load("pipeline.joblib")
     sbert = SentenceTransformer(SBERT_MODEL)
-    X = np.load(glob.glob("emb_*.npz")[0])["X"].astype(np.float32)
 
-    # метки строк датасета — для панели «похожие случаи»
-    all_labels = set()
-    for b in ("colloquial", "mixed"):
-        all_labels.update(pipe[b]["classes"])
-    with open("dataset.csv", encoding="utf-8") as f:
-        rows = list(csv.reader(f))
-    if rows and (len(rows[0]) < 2 or rows[0][1] not in all_labels):
-        rows = rows[1:]  # первая строка — заголовок
-    labels = [r[1] for r in rows if len(r) >= 2]
-    n = min(len(labels), len(X))
-    labels, Xr = labels[:n], X[:n]
-    Xn = Xr / (np.linalg.norm(Xr, axis=1, keepdims=True) + 1e-9)
+    if os.path.exists("emb_all.npz") and os.path.exists("labels.npy"):
+        X = np.load("emb_all.npz")["X"].astype(np.float32)
+        labels = [str(x) for x in np.load("labels.npy", allow_pickle=True)]
+    else:
+        import csv
+        X = np.load("emb_f6f1fc20de6bcc7a.npz")["X"].astype(np.float32)
+        all_labels = set()
+        for b in BRANCHES:
+            all_labels.update(pipe[b]["classes"])
+        with open("dataset.csv", encoding="utf-8-sig") as f:
+            rows = list(csv.reader(f))
+        labels = [r[1] for r in rows if len(r) >= 2 and r[1] in all_labels]
+        n = min(len(labels), len(X))
+        labels, X = labels[:n], X[:n]
 
-    # нормировка эмбеддингов — по нормам строк датасета
-    mean_norm = float(np.mean(np.linalg.norm(Xr, axis=1)))
+    mean_norm = float(np.mean(np.linalg.norm(X, axis=1)))
     use_norm = bool(abs(mean_norm - 1.0) < 0.05)
-    print("MEDBOT: numpy", np.__version__, "| средняя норма эталона:",
-          round(mean_norm, 4), "| нормировка =", use_norm)
+    print("MEDBOT: строк эталона:", len(X),
+          "| средняя норма:", round(mean_norm, 4), "| нормировка =", use_norm)
+
+    Xn = X / (np.linalg.norm(X, axis=1, keepdims=True) + 1e-9)
 
     def embed(texts):
         e = np.asarray(sbert.encode(list(texts), convert_to_numpy=True),
@@ -72,19 +77,22 @@ def get_state():
         e = embed([text])[0]
         e = e / (np.linalg.norm(e) + 1e-9)
         sims = Xn @ e
-        idx = np.argsort(sims)[::-1][:k]
-        return [(labels[i], float(sims[i])) for i in idx]
+        idx = np.argsort(sims)[::-1]
+        out, seen = [], set()
+        for i in idx:
+            if labels[i] in seen:
+                continue          # не показываем один и тот же диагноз дважды
+            seen.add(labels[i])
+            out.append((labels[i], float(sims[i])))
+            if len(out) >= k:
+                break
+        return out
 
     return {"pipe": pipe, "embed": embed, "similar": similar_cases,
             "normalized": use_norm}
 
 def _branch_name(raw, pipe):
-    if isinstance(raw, (str, np.str_)):
-        return str(raw)
-    classes = list(pipe["router"].classes_)
-    if all(isinstance(c, (str, np.str_)) for c in classes):
-        return str(classes[int(np.asarray(raw).item())])
-    return ["colloquial", "mixed"][int(np.asarray(raw).item())]
+    return BRANCHES[int(np.asarray(raw).item())]
 
 def predict(text):
     s = get_state()
@@ -111,6 +119,8 @@ ADVICE = {
     "чесотка": "Лечение только по рецепту врача. Одновременно обрабатывают всех членов семьи, бельё — горячая стирка.",
     "пневмония": "Срочно к врачу: нужна рентгенография и назначение антибиотиков. Самолечение недопустимо.",
     "пищевое отравление": "Обильное дробное питьё, щадящая диета. Температура, кровь в стуле или признаки обезвоживания — к врачу.",
+    "аритмия": "Зафиксировать пульс и время приступа. Перебои в сердце, головокружение или обморок — к кардиологу.",
+    "стенокардия": "Сесть, расстегнуть воротник, при боли за грудиной дольше 5 минут — вызвать скорую.",
 }
 
 RED_FLAGS = [
