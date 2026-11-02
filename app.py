@@ -6,8 +6,8 @@ st.set_page_config(page_title="МедБот", page_icon="🩺")
 st.title("🩺 МедБот — первичная оценка жалоб")
 st.caption("Модель не ставит диагноз. При тревожных симптомах обратитесь к врачу.")
 
-st.sidebar.markdown("**build: grid-v2**")
-st.sidebar.caption("76 диагнозов · SBERT · LinearSVC")
+st.sidebar.markdown("**build: grid-v3**")
+st.sidebar.caption("76+ диагнозов · SBERT · LinearSVC")
 
 text = st.text_area("Опишите жалобы своими словами:", height=100)
 
