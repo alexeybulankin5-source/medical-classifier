@@ -2,7 +2,6 @@
 import importlib.util, os, sys
 import streamlit as st
 
-# загружаем medbot ЯВНО по пути файла рядом с app.py — никакой теневой копий модуля
 _HERE = os.path.dirname(os.path.abspath(__file__))
 _spec = importlib.util.spec_from_file_location("medbot_live", os.path.join(_HERE, "medbot.py"))
 medbot = importlib.util.module_from_spec(_spec)
@@ -36,25 +35,25 @@ text = st.text_area("Опишите жалобы своими словами:", 
 if st.button("🩺 Поставить предварительный диагноз", type="primary", use_container_width=True):
     if not text.strip():
         st.warning("Опишите жалобы — хотя бы пару слов.")
+        st.stop()
+    flags = medbot.emergency_check(text)
+    if flags:
+        st.error("⚠️ Признаки, требующие срочной помощи:\n\n" +
+                 "\n".join(f"• {f}" for f in flags) +
+                 "\n\nЭто вне компетенции модели — звоните в скорую: **103** или **112**.")
+        st.warning("При экстренных признаках автоматический диагноз не выдаётся: "
+                   "оценка требует врача. До приезда скорой не оставляйте человека одного.")
+        st.stop()
+    r = medbot.predict(text)
+    st.markdown(f"Ветка модели: **{r['branch']}** · маржа уверенности: **{r['margin']:.2f}**")
+    if r["confident"]:
+        st.success(f"Предварительный диагноз: **{r['top'][0][0]}** ({r['top'][0][1]*100:.0f}%)")
+        st.info(medbot.advice_for(r['top'][0][0]))
     else:
-        flags = medbot.emergency_check(text)
-        if flags:
-            st.error("⚠️ Признаки, требующие срочной помощи:\n\n" +
-                     "\n".join(f"• {f}" for f in flags) +
-                     "\n\nЭто вне компетенции модели — звоните в скорую: **103** или **112**.")
-            st.warning("При экстренных признаках автоматический диагноз не выдаётся: "
-                       "оценка требует врача. До приезда скорой не оставляйте человека одного.")
-        else:
-            r = medbot.predict(text)
-        st.markdown(f"Ветка модели: **{r['branch']}** · маржа уверенности: **{r['margin']:.2f}**")
-        if r["confident"]:
-            st.success(f"Предварительный диагноз: **{r['top'][0][0]}** ({r['top'][0][1]*100:.0f}%)")
-            st.info(medbot.advice_for(r['top'][0][0]))
-        else:
-            st.warning("Уверенного ответа нет — жалобы похожи на несколько заболеваний.")
-        st.subheader("Топ-3 варианта")
-        for name, p in r["top"]:
-            st.markdown(f"- **{name}** — {p*100:.0f}%")
-        st.subheader("Похожие случаи из базы")
-        for name, sim in medbot.get_state(key)["similar"](text, k=3):
-            st.markdown(f"- {name} — сходство {sim*100:.0f}%")
+        st.warning("Уверенного ответа нет — жалобы похожи на несколько заболеваний.")
+    st.subheader("Топ-3 варианта")
+    for name, p in r["top"]:
+        st.markdown(f"- **{name}** — {p*100:.0f}%")
+    st.subheader("Похожие случаи из базы")
+    for name, sim in medbot.get_state(key)["similar"](text, k=3):
+        st.markdown(f"- {name} — сходство {sim*100:.0f}%")
