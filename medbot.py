@@ -1,14 +1,12 @@
 # -*- coding: utf-8 -*-
 import os, re, numpy as np, joblib, streamlit as st
 
-VERSION = "v12-balanced"
+VERSION = "v13-rules"
 SBERT_MODEL = "ai-forever/sbert_large_nlu_ru"
 MARGIN_THRESHOLD = 0.10
+SIM_EXACT = 0.92
 BRANCHES = ["colloquial", "mixed"]
-SIM_EXACT = 0.92   # совпадение с эталоном, дающее уверенность без маржи
 W_MODEL, W_SIM = 0.35, 0.65
-CARDIO_KEYS = ["стенокардия", "инфаркт", "аритмия"]
-CARDIO_BOOST = 0.30
 
 EMERGENCY = [
     (r"болит\s+серд[це]|серд[це]\s+(болит|колет|жмёт|жет|давит|тупит)|боль\s+в\s+сердце", "боль в области сердца"),
@@ -23,14 +21,28 @@ EMERGENCY = [
     (r"температур\w+\s+(выше|под)\s+(39|40)|не\s+сбивается", "высокая температура, не сбиваемая жаропонижающими"),
 ]
 
+# клинический правиловый слой поверх ML: различает сердечные классы по характеру симптома
+CARDIO_RULES = [
+    ("инфаркт", [r"не\s+отпускает", r"полчаса", r"не\s+помог", r"страх\s+смерти",
+                 r"как\s+в\s+тисках", r"началось\s+в\s+покое"], 0.30),
+    ("стенокардия", [r"болит", r"жм[ёе]т", r"давит", r"сжимает", r"сдавил", r"жж[ёе]т",
+                     r"за\s+грудиной", r"боль\s+в\s+груди"], 0.15),
+    ("аритмия", [r"перебо[ия]", r"замирает", r"спотыкается", r"колотится",
+                 r"трепещет", r"как\s+рыбка", r"пульс\s+(то|скачет|пропускает)"], 0.20),
+]
+
 def emergency_check(text):
     t = text.lower()
     return [msg for pat, msg in EMERGENCY if re.search(pat, t)]
 
-def is_cardio_alert(text):
+def rule_bonus(text):
     t = text.lower()
-    heart = [pat for pat, _ in EMERGENCY[:5]]
-    return any(re.search(p, t) for p in heart)
+    out = {}
+    for key, pats, bonus in CARDIO_RULES:
+        hits = sum(1 for p in pats if re.search(p, t))
+        if hits:
+            out[key] = bonus * min(hits, 2)
+    return out
 
 def cache_key():
     parts = []
@@ -72,7 +84,6 @@ def get_state(cache_key):
                 break
         return out
 
-    # сходство класса = среднее трёх лучших эталонов (устойчиво к выбросам)
     def class_sims(text):
         e = embed([text])[0]
         sims = Xn @ e
@@ -107,15 +118,16 @@ def predict(text):
     classes = set(model_scores) | set(sims)
     scores = {c: W_MODEL * model_scores.get(c, 0.0) + W_SIM * sims.get(c, 0.0)
               for c in classes}
-    if is_cardio_alert(text):
-        # буст пропорционален сходству с эталоном: сильнее совпадение — больше прибавка
-        for c in classes:
-            if any(k in c.lower() for k in CARDIO_KEYS):
-                scores[c] += CARDIO_BOOST * sims.get(c, 0.0)
+    rules = rule_bonus(text)
+    for c in scores:
+        for key, bonus in rules.items():
+            if key in c.lower():
+                scores[c] += bonus
     top = sorted(scores.items(), key=lambda kv: -kv[1])[:3]
     margin = top[0][1] - top[1][1]
-    # уверен, если развёл классы по марже ИЛИ топ совпал с эталоном почти дословно
-    confident = margin >= MARGIN_THRESHOLD or sims.get(top[0][0], 0.0) >= SIM_EXACT
+    top_rule = max((b for key, b in rules.items() if key in top[0][0].lower()), default=0.0)
+    confident = (margin >= MARGIN_THRESHOLD or sims.get(top[0][0], 0.0) >= SIM_EXACT
+                 or top_rule > 0.0)
     branch = _branch_name(s["pipe"]["router"].predict(emb)[0], s["pipe"])
     return {"branch": branch, "top": top, "margin": margin, "confident": confident}
 
