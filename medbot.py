@@ -118,6 +118,8 @@ def get_state(cache_key):
             "class_sims": class_sims}
 
 def _branch_name(raw, pipe):
+    if isinstance(raw, str):
+        return raw
     return BRANCHES[int(np.asarray(raw).item())]
 
 def predict(text):
