@@ -24,7 +24,7 @@ def emergency_check(text):
 
 def cache_key():
     parts = []
-    for f in ("pipeline.joblib", "emb_all.npz", "labels.npy", "medbot.py", "app.py"):
+    for f in ("pipeline.joblib", "emb_all.npz", "labels.npy", "medbot.py"):
         try:
             parts.append(str(os.path.getmtime(f)))
         except OSError:
