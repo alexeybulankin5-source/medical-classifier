@@ -1,12 +1,13 @@
 # -*- coding: utf-8 -*-
 import os, re, numpy as np, joblib, streamlit as st
 
-VERSION = "v13l-confidence"
+VERSION = "v13m-saniti"
 SBERT_MODEL = "cointegrated/rubert-tiny2"
 MARGIN_THRESHOLD = 0.10
 SIM_EXACT = 0.92
 BRANCHES = ["colloquial", "mixed"]
 W_MODEL, W_SIM = 0.35, 0.65
+SIM_MIN_HIGH = 0.60  # минимум похожести на базу для high/medium
 
 EMERGENCY = [
     (r"болит\s+серд[це]|серд[це]\s+(болит|колет|жмёт|жет|давит|тупит)|боль\s+в\s+сердце", "боль в области сердца"),
@@ -182,10 +183,10 @@ def predict(text):
     sim_top = sims.get(top[0][0], 0.0)
     if nn_sim >= 0.97:
         tier = "high"
-    elif margin >= 0.08 or sim_top >= 0.85:
+    elif sim_top >= 0.85 or (margin >= 0.08 and sim_top >= SIM_MIN_HIGH):
         tier = "high"
     elif margin >= 0.03 or sim_top >= 0.68:
-        tier = "medium"
+        tier = "medium" if sim_top >= SIM_MIN_HIGH else "low"
     else:
         tier = "low"
     return {"branch": branch, "top": top, "margin": margin,

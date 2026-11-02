@@ -46,11 +46,15 @@ if st.button("🩺 Поставить предварительный диагн�
         st.stop()
     r = medbot.predict(text)
     st.markdown(f"Ветка модели: **{r['branch']}** · маржа уверенности: **{r['margin']:.2f}**")
-    if r["confident"]:
+    conf = r.get("confidence") or ("high" if r["confident"] else "low")
+    if conf == "high":
         st.success(f"Предварительный диагноз: **{r['top'][0][0]}** ({r['top'][0][1]*100:.0f}%)")
         st.info(medbot.advice_for(r['top'][0][0]))
+    elif conf == "medium":
+        alts = ", ".join(c for c, _ in r["top"][1:3])
+        st.info(f"Предположительно **{r['top'][0][0]}** ({r['top'][0][1]*100:.0f}%). Похожие варианты: {alts} — если что-то из этого ближе к вашим жалобам, уточните формулировку.")
     else:
-        st.warning("Уверенного ответа нет — жалобы похожи на несколько заболеваний.")
+        st.warning("Уверенного ответа нет — опишите главный симптом подробнее (где болит, когда началось, что усиливает), и поиск сузится.")
     st.subheader("Топ-3 варианта")
     for name, p in r["top"]:
         st.markdown(f"- **{name}** — {p*100:.0f}%")
