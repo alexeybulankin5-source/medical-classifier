@@ -1,8 +1,8 @@
 # -*- coding: utf-8 -*-
 import os, re, numpy as np, joblib, streamlit as st
 
-VERSION = "v13-rules"
-SBERT_MODEL = "ai-forever/sbert_large_nlu_ru"
+VERSION = "v13d-lite"
+SBERT_MODEL = "ai-forever/sbert_small_nlu_ru"
 MARGIN_THRESHOLD = 0.10
 SIM_EXACT = 0.92
 BRANCHES = ["colloquial", "mixed"]
