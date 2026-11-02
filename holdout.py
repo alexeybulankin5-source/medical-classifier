@@ -16,8 +16,8 @@ for c, idxs in by_cls.items():
     test.update(random.sample(idxs, max(1, int(0.1 * len(idxs)))))
 train = [i for i in range(len(texts)) if i not in test]
 print(f"train: {len(train)} | holdout: {len(test)} | классов: {len(by_cls)}")
-sbert = SentenceTransformer("cointegrated/rubert-tiny2")
-X = np.asarray(sbert.encode(texts, convert_to_numpy=True, batch_size=64), dtype=np.float32)
+sbert = SentenceTransformer("intfloat/multilingual-e5-small")
+X = np.asarray(sbert.encode(["query: " + t for t in texts], convert_to_numpy=True, batch_size=64), dtype=np.float32)
 X /= (np.linalg.norm(X, axis=1, keepdims=True) + 1e-9)
 counts = Counter(labels[i] for i in train)
 Xb, yb, bb = [], [], []
