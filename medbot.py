@@ -1,10 +1,11 @@
 # -*- coding: utf-8 -*-
 import os, re, numpy as np, joblib, streamlit as st
 
+VERSION = "v10-hybrid"          # честная метка живёт в самом medbot
 SBERT_MODEL = "ai-forever/sbert_large_nlu_ru"
 MARGIN_THRESHOLD = 0.12
 BRANCHES = ["colloquial", "mixed"]
-W_MODEL, W_SIM = 0.5, 0.5   # вес модели и вес сходства с эталоном
+W_MODEL, W_SIM = 0.5, 0.5       # вес модели и вес сходства с эталоном
 
 EMERGENCY = [
     (r"болит\s+серд[це]|серд[це]\s+(болит|колет|жмёт|жет|давит|тупит)|боль\s+в\s+сердце", "боль в области сердца"),
@@ -63,7 +64,6 @@ def get_state(cache_key):
                 break
         return out
 
-    # максимум сходства по каждому классу: словарь класс -> 0..1
     def class_sims(text):
         e = embed([text])[0]
         sims = Xn @ e
@@ -83,7 +83,6 @@ def predict(text):
     s = get_state(cache_key())
     emb = s["embed"]([text])
     sims = s["class_sims"](text)
-    # объединяем вероятности обеих веток, затем смешиваем со сходством из эталона
     model_scores = {}
     for name in BRANCHES:
         sub = s["pipe"][name]

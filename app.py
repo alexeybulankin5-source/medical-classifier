@@ -8,6 +8,8 @@ st.caption("Модель не ставит диагноз. При тревожн
 
 key = medbot.cache_key() if hasattr(medbot, "cache_key") else "fallback"
 
+st.sidebar.markdown(f"**build: {getattr(medbot, 'VERSION', 'СТАРЫЙ — версии нет!')}**")
+st.sidebar.caption("гибрид в medbot: " + ("да" if hasattr(medbot, "W_MODEL") else "НЕТ — старый код!"))
 _diag = {}
 try:
     import joblib, numpy as np
@@ -17,15 +19,9 @@ try:
     _diag["rows"] = np.load("emb_all.npz")["X"].shape[0]
 except Exception as e:
     _diag["model"] = "ошибка: " + str(e)[:60]
-_msrc = open("medbot.py", encoding="utf-8").read()
-_diag["dedup"] = "есть" if "seen.add" in _msrc else "НЕТ"
-_diag["predict"] = "union веток" if "объединяем" in _msrc else "старый — одна ветка"
-
-st.sidebar.markdown("**build: grid-v9**")
 st.sidebar.caption(f"модель colloquial: {_diag.get('model', '?')}")
 st.sidebar.caption(f"стенокардия в классах: {_diag.get('cardio', '?')}")
-st.sidebar.caption(f"эталон: {_diag.get('rows', '?')} строк · дедуп: {_diag.get('dedup', '?')}")
-st.sidebar.caption(f"predict: гибрид модель+соседи")
+st.sidebar.caption(f"эталон: {_diag.get('rows', '?')} строк")
 
 text = st.text_area("Опишите жалобы своими словами:", height=100)
 
