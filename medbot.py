@@ -1,14 +1,14 @@
 # -*- coding: utf-8 -*-
 import os, re, numpy as np, joblib, streamlit as st
 
-VERSION = "v13n-relsaniti"
+VERSION = "v13o-gap013"
 SBERT_MODEL = "cointegrated/rubert-tiny2"
 MARGIN_THRESHOLD = 0.10
 SIM_EXACT = 0.92
 BRANCHES = ["colloquial", "mixed"]
 W_MODEL, W_SIM = 0.35, 0.65
 SIM_MIN_HIGH = 0.60  # минимум похожести на базу для high/medium
-GAP_MIN = 0.05     # отрыв лучшего класса от медианы по всем классам
+GAP_MIN = 0.13     # отрыв лучшего класса от медианы (GOOD мин 0.153, BAD многсловный макс 0.103)
 MIN_WORDS = 2       # минимум содержательных слов для уверенного ответа
 
 EMERGENCY = [
