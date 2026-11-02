@@ -1,6 +1,13 @@
 # -*- coding: utf-8 -*-
+import importlib.util, os, sys
 import streamlit as st
-import medbot
+
+# загружаем medbot ЯВНО по пути файла рядом с app.py — никакой теневой копий модуля
+_HERE = os.path.dirname(os.path.abspath(__file__))
+_spec = importlib.util.spec_from_file_location("medbot_live", os.path.join(_HERE, "medbot.py"))
+medbot = importlib.util.module_from_spec(_spec)
+sys.modules["medbot_live"] = medbot
+_spec.loader.exec_module(medbot)
 
 st.set_page_config(page_title="МедБот", page_icon="🩺")
 st.title("🩺 МедБот — первичная оценка жалоб")
@@ -10,6 +17,7 @@ key = medbot.cache_key() if hasattr(medbot, "cache_key") else "fallback"
 
 st.sidebar.markdown(f"**build: {getattr(medbot, 'VERSION', 'СТАРЫЙ — версии нет!')}**")
 st.sidebar.caption("гибрид в medbot: " + ("да" if hasattr(medbot, "W_MODEL") else "НЕТ — старый код!"))
+st.sidebar.caption(f"модуль загружен из: {getattr(medbot, '__file__', '?')}")
 _diag = {}
 try:
     import joblib, numpy as np
