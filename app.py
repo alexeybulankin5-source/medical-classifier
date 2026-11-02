@@ -1,81 +1,36 @@
 # -*- coding: utf-8 -*-
-import io
-import traceback
 import streamlit as st
 import medbot
 
-BUILD_TAG = "grid-v1"
-
-st.set_page_config(page_title="МедБот", page_icon="🩺", layout="centered")
+st.set_page_config(page_title="МедБот", page_icon="🩺")
 st.title("🩺 МедБот — первичная оценка жалоб")
 st.caption("Модель не ставит диагноз. При тревожных симптомах обратитесь к врачу.")
-st.sidebar.caption(f"build: {BUILD_TAG}")
+
+st.sidebar.markdown("**build: grid-v2**")
+st.sidebar.caption("76 диагнозов · SBERT · LinearSVC")
 
 text = st.text_area("Опишите жалобы своими словами:", height=100)
-audio = st.audio_input("…или запишите голосом 🎙")
 
-if audio is not None and not text.strip():
-    import speech_recognition as sr
-    try:
-        rec = sr.Recognizer()
-        with sr.AudioFile(io.BytesIO(audio.getvalue())) as src:
-            rec.adjust_for_ambient_noise(src, duration=0.5)
-            data = rec.record(src)
-        text = rec.recognize_google(data, language="ru-RU")
-        st.success(f"Распознано: «{text}»")
-    except Exception:
-        st.warning("Не удалось распознать речь. Введите текст вручную.")
-
-if text.strip():
-    q = text.strip()
-
-    # --- 1. Аварийная сетка: срабатывает ДО и НЕЗАВИСИМО от модели ---
-    emerg = medbot.emergency_check(q)
-    if emerg:
-        st.error(
-            "**⚠️ В вашей жалобе есть признаки, требующие срочной медицинской помощи:** "
-            + "; ".join(emerg) + "\n\n"
-            "**Это вне компетенции модели — сразу звоните в скорую:** "
-            "[103](tel:103) или [112](tel:112).\n\n"
-            "Предсказания ниже — только справочная информация, не основание откладывать вызов."
-        )
-
-    # --- 2. Предсказание модели ---
-    with st.spinner("Анализирую..."):
-        try:
-            r = medbot.predict(q)
-        except Exception:
-            st.error("**Отладка — полный трейсбек:**\n\n```\n"
-                     + traceback.format_exc() + "\n```")
-            st.stop()
-
-    st.write(f"Ветка модели: **{r['branch']}** · маржа уверенности: **{r['margin']:.2f}**")
-
-    if r["confident"]:
-        top_name = r["top"][0][0]
-        st.success(f"Наиболее вероятный диагноз: **{top_name}** ({r['top'][0][1]*100:.0f}%)")
-        st.subheader("Что делать дальше")
-        st.write(medbot.advice_for(top_name))
-        st.markdown("**Красные флаги** — при любом из них сразу к врачу:")
-        st.write(" • " + "\n • ".join(medbot.RED_FLAGS))
+if st.button("🩺 Поставить предварительный диагноз", type="primary", use_container_width=True):
+    if not text.strip():
+        st.warning("Опишите жалобы — хотя бы пару слов.")
     else:
-        st.warning("Уверенного ответа нет — жалобы похожи на несколько заболеваний.")
+        flags = medbot.emergency_check(text)
+        if flags:
+            st.error("⚠️ Признаки, требующие срочной помощи:\n\n" +
+                     "\n".join(f"• {f}" for f in flags) +
+                     "\n\nЭто вне компетенции модели — звоните в скорую: **103** или **112**.")
+            st.caption("Предсказания ниже — только справка, не основание откладывать вызов.")
+        r = medbot.predict(text)
+        st.markdown(f"Ветка модели: **{r['branch']}** · маржа уверенности: **{r['margin']:.2f}**")
+        if r["confident"]:
+            st.success(f"Предварительный диагноз: **{r['top'][0][0]}** ({r['top'][0][1]*100:.0f}%)")
+            st.info(medbot.advice_for(r['top'][0][0]))
+        else:
+            st.warning("Уверенного ответа нет — жалобы похожи на несколько заболеваний.")
         st.subheader("Топ-3 варианта")
         for name, p in r["top"]:
-            st.write(f"**{name}** — {p*100:.0f}%")
-        st.info("Уточните: что из этого больше похоже на ваше состояние?")
-        choice = st.radio("Выберите вероятный диагноз:", [n for n, _ in r["top"]], index=None)
-        if choice:
-            st.markdown(f"**Если это {choice}, то что делать:**")
-            st.write(medbot.advice_for(choice))
-            st.markdown("**Красные флаги:**")
-            st.write(" • " + "\n • ".join(medbot.RED_FLAGS))
-
-    # --- 3. Похожие случаи из базы: что реально увидела модель ---
-    try:
-        cases = get = medbot.get_state()["similar"](q, k=5)
+            st.markdown(f"- **{name}** — {p*100:.0f}%")
         st.subheader("Похожие случаи из базы")
-        for label, sim in cases:
-            st.write(f"**{label}** — сходство {sim*100:.0f}%")
-    except Exception:
-        pass
+        for name, sim in medbot.get_state()["similar"](text, k=3):
+            st.markdown(f"- {name} — сходство {sim*100:.0f}%")
