@@ -23,9 +23,7 @@ EMERGENCY = [
     (r"нитроглицерин[^.;]{0,20}не\s+помог", "боль не снимается нитроглицерином — возможен инфаркт"),
     (r"страх\s+смерти[^.;]{0,40}(груд|сердц|тиск|давлени)|(груд|сердц|тиск|челюст)[^.;]{0,40}страх\s+смерти", "страх смерти с давящей болью — возможен инфаркт"),
 ]
-]
 
-# правила привязаны к локализации: боль считается сердечной только рядом с сердцем/грудью
 CARDIO_RULES = [
     ("инфаркт", [r"(жм[ёе]т|давит|болит)[^.;]{0,30}не\s+отпускает",
                  r"(груд|сердц)[^.;]{0,30}(полчаса|не\s+отпускает)",
@@ -41,7 +39,6 @@ CARDIO_RULES = [
                  r"пульс\s+(то|скачет|пропускает)"], 0.20),
 ]
 
-# отрицательная защита: локализованная боль вне груди гасит сердечные классы
 NEG_PATTERNS = [r"поясниц", r"\bспин", r"\bзуб", r"\bколен", r"\bстоп[аеу]", r"\bсустав", r"\bживот"]
 
 def emergency_check(text):
@@ -59,7 +56,7 @@ def rule_bonus(text):
 
 def negative_guard(text, rules):
     t = text.lower()
-    if rules:  # грудной контекст есть — защита не нужна
+    if rules:
         return 0.0
     if any(re.search(p, t) for p in NEG_PATTERNS):
         return 0.25
@@ -146,14 +143,8 @@ def predict(text):
                 scores[c] += bonus
     neg = negative_guard(text, rules)
     if neg > 0.0:
-        for c in scores:
-            if any(k in c.lower() for k in ("стенокардия", "аритмия", "инфаркт")):
-                scores[c] -= neg
-    if "инфаркт" in rules:
-        for c in scores:
-            if "инфаркт" in c.lower():
-                scores[c] = max(scores.values()) + 0.02
-                break
+        scores = {c: v for c, v in scores.items()
+                  if not any(k in c.lower() for k in ("стенокардия", "аритмия", "инфаркт"))}
     if "инфаркт" in rules:
         for c in scores:
             if "инфаркт" in c.lower():
@@ -163,7 +154,8 @@ def predict(text):
     top = [(c, min(v, 0.99)) for c, v in top]
     margin = top[0][1] - top[1][1]
     top_rule = max((b for key, b in rules.items() if key in top[0][0].lower()), default=0.0)
-    confident = (margin >= MARGIN_THRESHOLD or sims.get(top[0][0], 0.0) >= SIM_EXACT
+    conf_thresh = 0.05 if neg > 0.0 else MARGIN_THRESHOLD
+    confident = (margin >= conf_thresh or sims.get(top[0][0], 0.0) >= SIM_EXACT
                  or top_rule > 0.0)
     branch = _branch_name(s["pipe"]["router"].predict(emb)[0], s["pipe"])
     return {"branch": branch, "top": top, "margin": margin, "confident": confident}
