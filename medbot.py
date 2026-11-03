@@ -8,9 +8,11 @@ SIM_EXACT = 0.92
 BRANCHES = ["colloquial", "mixed"]
 W_MODEL, W_SIM = 0.35, 0.65
 SIM_MIN_HIGH = 0.60  # минимум похожести на базу для high/medium
-GAP_MIN = 0.075   # wave3b: калибровка без самоповтора
+GAP_MIN = 0.063
 MIN_WORDS = 2       # минимум содержательных слов для уверенного ответа
-SIM_ABS = 0.927   # wave3b: калибровка без самоповтора
+HIGH_GAP = 0.095
+HIGH_TOP = 0.96
+SIM_ABS = 0.912
 
 EMERGENCY = [
     # гипертонический криз: давление 180+ или резкий скачок
