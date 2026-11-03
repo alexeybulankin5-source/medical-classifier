@@ -45,13 +45,12 @@ if st.button("🩺 Поставить предварительный диагн�
                    "оценка требует врача. До приезда скорой не оставляйте человека одного.")
         st.stop()
     r = medbot.predict(text)
-    from advice_ui import render_advice  # advice UI (wave5)
-    render_advice(r)
     st.markdown(f"Ветка модели: **{r['branch']}** · маржа уверенности: **{r['margin']:.2f}**")
     conf = r.get("confidence") or ("high" if r["confident"] else "low")
     if conf == "high":
         st.success(f"Предварительный диагноз: **{r['top'][0][0]}** ({r['top'][0][1]*100:.0f}%)")
-        st.info(medbot.advice_for(r['top'][0][0]))
+        from advice_ui import render_advice  # advice UI (wave5)
+        render_advice(r)
     elif conf == "medium":
         alts = ", ".join(c for c, _ in r["top"][1:3])
         st.info(f"Предположительно **{r['top'][0][0]}** ({r['top'][0][1]*100:.0f}%). Похожие варианты: {alts} — если что-то из этого ближе к вашим жалобам, уточните формулировку.")
