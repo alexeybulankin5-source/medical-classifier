@@ -1,7 +1,7 @@
 # -*- coding: utf-8 -*-
 import os, re, numpy as np, joblib, streamlit as st
 
-VERSION = "v16-e5"
+VERSION = "v17-rfguard"
 SBERT_MODEL = "cointegrated/rubert-tiny2"
 MARGIN_THRESHOLD = 0.10
 SIM_EXACT = 0.92
@@ -215,8 +215,8 @@ def predict(text):
                 scores[c] = max(scores.values()) + 0.02
                 break
     rf = red_flag_hit(text)
-    if rf is not None and rf in scores:
-        scores[rf] = max(scores.values()) + 0.05
+    if rf is not None:
+        scores[rf] = max(list(scores.values()) + [0.0]) + 0.05
     top = sorted(scores.items(), key=lambda kv: -kv[1])[:3]
     top = [(c, min(v, 0.99)) for c, v in top]
     margin = top[0][1] - top[1][1]
@@ -224,8 +224,6 @@ def predict(text):
     sim_gap_e = sim_top_e - float(np.mean(list(sims.values())))
     top_rule = max((b for key, b in rules.items() if key in top[0][0].lower()), default=0.0)
     conf_thresh = 0.05 if neg > 0.0 else MARGIN_THRESHOLD
-    confident = (margin >= conf_thresh or sims.get(top[0][0], 0.0) >= SIM_EXACT
-                 or top_rule > 0.0)
     confident = (sim_top_e >= 0.97 or (sim_top_e >= SIM_ABS and sim_gap_e >= GAP_MIN))
     # NN-GUARD v2: точное совпадение с одной эталонной фразой на 0.97+
     nn_lbl, nn_sim = s["exact_match"](text)
@@ -243,13 +241,13 @@ def predict(text):
     ok_sanity = n_words >= MIN_WORDS and (sim_gap >= GAP_MIN or sim_top >= SIM_ABS)
     if nn_sim >= 0.97:
         tier = "high"
-    elif ok_sanity and (sim_top >= 0.85 or margin >= 0.08):
+    elif ok_sanity and sim_top >= HIGH_TOP and sim_gap >= HIGH_GAP:
         tier = "high"
-    elif ok_sanity and (margin >= 0.03 or sim_top >= 0.68):
+    elif ok_sanity:
         tier = "medium"
     else:
         tier = "low"
-    if rf is not None:
+    if rf is not None and top[0][0] == rf:
         tier = "high"
     return {"branch": branch, "top": top, "margin": margin,
             "confident": confident, "confidence": tier}
