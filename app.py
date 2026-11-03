@@ -53,6 +53,8 @@ if st.button("🩺 Поставить предварительный диагн�
         render_advice(r)
     elif conf == "medium":
         alts = ", ".join(c for c, _ in r["top"][1:3])
+        from advice_ui import render_advice  # advice UI medium (wave5)
+        render_advice(r)
         st.info(f"Предположительно **{r['top'][0][0]}** ({r['top'][0][1]*100:.0f}%). Похожие варианты: {alts} — если что-то из этого ближе к вашим жалобам, уточните формулировку.")
     else:
         st.warning("Уверенного ответа нет — опишите главный симптом подробнее (где болит, когда началось, что усиливает), и поиск сузится.")
