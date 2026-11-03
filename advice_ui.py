@@ -21,4 +21,6 @@ def render_advice(r):
             st.markdown(f"- {c}")
     if r.get("draft_advice"):
         st.caption("Черновик описания — будет уточнён.")
+    if r.get("guard"):
+        st.caption(f"⚖ {r['guard']}")
     st.caption(DISCLAIMER)
