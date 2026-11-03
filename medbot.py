@@ -392,5 +392,20 @@ def predict(text):
     r["description"] = info.get("desc", "") if r.get("confidence") in ("high", "medium") else ""
     r["confirm"] = list(info.get("confirm", [])) if r.get("confidence") in ("high", "medium") else []
     r["urgent"] = bool(info.get("urgent", False)) and r.get("confidence") in ("high", "medium")
+    # --- криз-гвард (D-007): давление >= 180/120 -> urgent независимо от класса ---
+    if not r["urgent"]:
+        hit = False
+        for _s, _d in _BP_RE.findall((text or "")):
+            if int(_s) >= 180 or int(_d) >= 120:
+                hit = True; break
+        if not hit:
+            import re as _re2
+            if _re2.search(r"давлени[а-я]*\s*(?:до\s*)?(1[89]\d|2\d\d)", (text or "")):
+                hit = True
+        if hit:
+            r["urgent"] = True
+            r["guard"] = (r.get("guard") + "; " if r.get("guard") else "") + "криз-гвард: давление >= 180/120 — urgent принудительно"
+            if not r.get("confirm"):
+                r["confirm"] = ["Измерьте давление ещё раз через 10-15 минут", "Есть ли боль в груди, одышка, нарушение речи или зрения?"]
     r["draft_advice"] = bool(info.get("draft", False))
     return r
