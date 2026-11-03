@@ -324,8 +324,8 @@ def get_advice(label):
     return _advice_kb().get(label, {"desc": "", "confirm": [], "urgent": False, "draft": True})
 
 # --- antonym guard: направление давления (wave5b) ---
-_HYP_UP = ("повышенн", "повышенн", "высокое давление", "высоком давлении", "высоким давлением",
-           "подскокива", "подскочил", "повыс", "зашкаливает", "давление зашкал", "гипертензи", "тонизиру")
+_HYP_UP = ("повышенн", "повыс", "высокое давление", "высоком давлении", "высоким давлением",
+           "подскакива", "подскочил", "зашкаливает", "гипертензи")
 _HYP_DOWN = ("пониженн", "низкое давление", "низким давлением", "низком давлении",
              "падает давление", "давление падает", "давление упало", "гипотензи")
 _PAIR = ("гипотония", "гипертония")
@@ -342,22 +342,45 @@ def _bp_direction(text):
     if down and not up: return "down"
     return None
 
+def _apply_bp_guard(r, text):
+    """Если направление давления однозначно по маркерам, а топ-1 — не тот класс
+    из пары гипо/гипертония — исправляем порядок: правильный класс поднимаем
+    из топа, а если его там нет — замещаем топ-1 (с пометкой гварда, cap medium)."""
+    d = _bp_direction(text)
+    if not d:
+        return
+    want = "гипертония" if d == "up" else "гипотония"
+    top = r.get("top") or []
+    if not top:
+        return
+    names = [c for c, _ in top]
+    if top[0][0] == want:
+        return  # порядок верный
+    if "гипотония" in names and "гипертония" in names:
+        j = names.index(want)
+        top[0], top[j] = top[j], top[0]
+        r["top"] = top
+        r["guard"] = f"антоним-гвард: «{d}» — приоритет класса «{want}»"
+        if r.get("confidence") in (None, "low"):
+            r["confidence"] = "medium"
+        return
+    if top[0][0] in _PAIR:
+        score = top[0][1]
+        if want in names:
+            j = names.index(want)
+            top[0], top[j] = top[j], top[0]
+        else:
+            top[0] = (want, score)
+        r["top"] = top
+        r["guard"] = f"антоним-гвард: «{d}» — класс «{want}» поднят по направлению давления"
+        if r.get("confidence") in (None, "low"):
+            r["confidence"] = "medium"
+
 _predict_base = predict
 def predict(text):
     r = _predict_base(text)
-    # antonym guard: если в топе спорят гипо/гипертония — направление решает гвард
+    _apply_bp_guard(r, (text or "").lower())
     top = r.get("top") or []
-    if len(top) >= 2 and _PAIR[0] in [c for c, _ in top] and _PAIR[1] in [c for c, _ in top]:
-        d = _bp_direction((text or "").lower())
-        if d:
-            want = "гипертония" if d == "up" else "гипотония"
-            if top[0][0] != want:
-                top[0], top[1] = top[1], top[0]
-                r["top"] = top
-                r["guard"] = f"антоним-гвард: «{d}» — приоритет класса «{want}»"
-                if r.get("confidence") == "low":
-                    r["confidence"] = "medium"  # внешнее знание повышает уверенность до medium
-    # advice layer
     if not top:
         return r
     label = top[0][0]
