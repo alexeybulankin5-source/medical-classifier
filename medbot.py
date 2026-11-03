@@ -8,9 +8,9 @@ SIM_EXACT = 0.92
 BRANCHES = ["colloquial", "mixed"]
 W_MODEL, W_SIM = 0.35, 0.65
 SIM_MIN_HIGH = 0.60  # минимум похожести на базу для high/medium
-GAP_MIN = 0.07   # калибровка v16-e5: выше max gap размытых (0.065)
+GAP_MIN = 0.07500000298023224   # wave3: калибровка без самоповтора
 MIN_WORDS = 2       # минимум содержательных слов для уверенного ответа
-SIM_ABS = 0.9210000038146973   # калибровка v16-e5: спасение граничных правильных
+SIM_ABS = 0.925000011920929   # wave3: калибровка без самоповтора, добор различающих формулировок
 
 EMERGENCY = [
     # гипертонический криз: давление 180+ или резкий скачок
@@ -198,7 +198,7 @@ def predict(text):
             if p > model_scores.get(c, 0.0):
                 model_scores[c] = p
     classes = set(model_scores) | set(sims)
-    scores = {c: W_MODEL * model_scores.get(c, 0.0) + W_SIM * sims.get(c, 0.0)
+    scores = {c: sims.get(c, 0.0)
               for c in classes}
     rules = rule_bonus(text)
     for c in scores:
