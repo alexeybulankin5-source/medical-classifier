@@ -306,3 +306,34 @@ def red_flag_hit(text):
     if has("справа", "справа внизу") and has("внизу живота", "подвздош") and has("нарастает", "усиливается"):
         return "аппендицит"
     return None
+
+# --- advice layer (wave5): диагноз + подтверждение ---
+import json as _kb_json
+_KB_CACHE = None
+def _advice_kb():
+    global _KB_CACHE
+    if _KB_CACHE is None:
+        try:
+            with open("knowledge.json", encoding="utf-8") as f:
+                _KB_CACHE = _kb_json.load(f)
+        except Exception:
+            _KB_CACHE = {}
+    return _KB_CACHE
+
+def get_advice(label):
+    return _advice_kb().get(label, {"desc": "", "confirm": [], "urgent": False, "draft": True})
+
+_predict_base = predict
+def predict(text):
+    r = _predict_base(text)
+    top = r.get("top") or []
+    if not top:
+        return r
+    label = top[0][0]
+    info = get_advice(label)
+    r["diagnosis"] = label
+    r["description"] = info.get("desc", "") if r.get("confidence") in ("high", "medium") else ""
+    r["confirm"] = list(info.get("confirm", [])) if r.get("confidence") in ("high", "medium") else []
+    r["urgent"] = bool(info.get("urgent", False)) and r.get("confidence") in ("high", "medium")
+    r["draft_advice"] = bool(info.get("draft", False))
+    return r
