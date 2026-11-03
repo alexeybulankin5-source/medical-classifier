@@ -214,13 +214,19 @@ def predict(text):
             if "инфаркт" in c.lower():
                 scores[c] = max(scores.values()) + 0.02
                 break
+    rf = red_flag_hit(text)
+    if rf is not None and rf in scores:
+        scores[rf] = max(scores.values()) + 0.05
     top = sorted(scores.items(), key=lambda kv: -kv[1])[:3]
     top = [(c, min(v, 0.99)) for c, v in top]
     margin = top[0][1] - top[1][1]
+    sim_top_e = float(sims.get(top[0][0], 0.0))
+    sim_gap_e = sim_top_e - float(np.mean(list(sims.values())))
     top_rule = max((b for key, b in rules.items() if key in top[0][0].lower()), default=0.0)
     conf_thresh = 0.05 if neg > 0.0 else MARGIN_THRESHOLD
     confident = (margin >= conf_thresh or sims.get(top[0][0], 0.0) >= SIM_EXACT
                  or top_rule > 0.0)
+    confident = (sim_top_e >= 0.97 or (sim_top_e >= SIM_ABS and sim_gap_e >= GAP_MIN))
     # NN-GUARD v2: точное совпадение с одной эталонной фразой на 0.97+
     nn_lbl, nn_sim = s["exact_match"](text)
     if nn_sim >= 0.97 and "инфаркт" not in rules:
@@ -230,9 +236,9 @@ def predict(text):
     branch = _branch_name(s["pipe"]["router"].predict(emb)[0], s["pipe"])
     # шкала уверенности: high — отвечаем как есть, medium — ответ + альтернативы,
     # low — уточняющий вопрос
-    sim_top = sims.get(top[0][0], 0.0)
+    sim_top = sim_top_e
     med_sim = float(np.median(list(sims.values()))) if sims else 0.0
-    sim_gap = sim_top - med_sim
+    sim_gap = sim_gap_e
     n_words = len(re.findall(r"[а-яёa-z]{2,}", text.lower()))
     ok_sanity = n_words >= MIN_WORDS and (sim_gap >= GAP_MIN or sim_top >= SIM_ABS)
     if nn_sim >= 0.97:
@@ -243,6 +249,8 @@ def predict(text):
         tier = "medium"
     else:
         tier = "low"
+    if rf is not None:
+        tier = "high"
     return {"branch": branch, "top": top, "margin": margin,
             "confident": confident, "confidence": tier}
 
@@ -262,3 +270,39 @@ ADVICE = {
 
 def advice_for(diagnosis):
     return ADVICE.get(diagnosis, "Наблюдать 2–3 дня, пить достаточно жидкости, не переносить болезнь на ногах. Если симптомы нарастают — к терапевту.")
+
+
+RED_FLAGS_DEBUG = False
+
+def red_flag_hit(text):
+    """Детерминированный guard критических состояний: комбинации ключевых
+    признаков -> класс. Срабатывание форсирует high (tier-овeррайд в predict).
+    Правила построены на клинически чётких признаках (FAST, ригидность шеи,
+    кровь в рвоте, отёк + дыхание) — то, где эмбеддинговая модель ненадёжна."""
+    t = text.lower()
+    def has(*ws): return any(w in t for w in ws)
+    # анафилаксия: сыпь/отёк + горло/дыхание
+    if has("сып", "отёк", "отек", "крапивниц") and has("горл", "дышать", "дыхан", "удушь", "сжатие"):
+        return "анафилаксия"
+    # кровотечение ЖКТ: кровь в рвоте или чёрный (смолистый) стул
+    if has("кров") and has("рвёт", "рвот", "рвала", "рвение"):
+        return "кровотечение ЖКТ"
+    if has("чёрный", "черный", "смолист") and has("стул", "кал"):
+        return "кровотечение ЖКТ"
+    # менингит: ригидность шеи или светобоязнь с рвотой
+    if has("шея", "затыл") and has("не гнётся", "не гнет", "не прижать", "не наклон", "не дотянуть"):
+        return "менингит"
+    if has("светобоязн", "свет бьёт", "свет и звук") and has("рвёт", "рвот", "голова"):
+        return "менингит"
+    # инфаркт: боль в груди + холодный пот + иррадиация
+    if has("грудин", "в груди", "сердц") and has("холодный пот", "липкий", "отдаёт") and has("челюст", "рук", "спин", "плеч"):
+        return "инфаркт миокарда"
+    # инсульт: асимметрия лица + речь, или односторонняя слабость + речь/зрение
+    if has("перекос", "асимметр", "опустился уголок", "повис", "не двигается лицо") and has("речь", "невнят", "смазал"):
+        return "инсульт"
+    if has("отнялась", "немеет", "не слушается", "слаб") and has("речь", "невнят", "смазал", "двоится"):
+        return "инсульт"
+    # аппендицит: боль справа внизу живота + нарастает
+    if has("справа", "справа внизу") and has("внизу живота", "подвздош") and has("нарастает", "усиливается"):
+        return "аппендицит"
+    return None
