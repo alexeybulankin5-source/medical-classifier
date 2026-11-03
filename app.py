@@ -45,6 +45,8 @@ if st.button("🩺 Поставить предварительный диагн�
                    "оценка требует врача. До приезда скорой не оставляйте человека одного.")
         st.stop()
     r = medbot.predict(text)
+    from advice_ui import render_advice  # advice UI (wave5)
+    render_advice(r)
     st.markdown(f"Ветка модели: **{r['branch']}** · маржа уверенности: **{r['margin']:.2f}**")
     conf = r.get("confidence") or ("high" if r["confident"] else "low")
     if conf == "high":
