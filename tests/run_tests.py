@@ -19,12 +19,12 @@ for case in suite:
         problems.append(f"уверенность: ждали {want_conf}, получили {conf}")
     if "urgent" in case and bool(r.get("urgent")) != case["urgent"]:
         problems.append(f"urgent: ждали {case['urgent']}, получили {bool(r.get('urgent'))}")
+    if case.get("urgent") and not r.get("confirm"):
+        problems.append("urgent без шагов подтверждения")
     if case.get("advice_free") and (r.get("description") or r.get("confirm")):
         problems.append("совет навязан при low-уверенности")
-    if case.get("urgent") and not r.get("confirm"):
     if case.get("draft_if_medium") and conf == "medium" and not r.get("draft_advice"):
         problems.append("medium-совет не помечен как черновик")
-        problems.append("urgent без шагов подтверждения")
     if problems:
         failed.append((case["text"], problems, top, conf))
     else:
