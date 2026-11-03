@@ -5,6 +5,9 @@ mb = importlib.util.module_from_spec(spec); sys.modules["mb"] = mb
 spec.loader.exec_module(mb)
 
 suite = json.load(open("tests/test_suite.json", encoding="utf-8"))
+bank = json.load(open("tests/stress_bank.json", encoding="utf-8"))
+_seen = {c["text"] for c in suite}
+suite = suite + [c for c in bank if c["text"] not in _seen]
 passed, failed = 0, []
 for case in suite:
     r = mb.predict(case["text"])
