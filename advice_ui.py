@@ -13,7 +13,10 @@ def render_advice(r):
         st.error(f"🚨 КРИТИЧЕСКОЕ СОСТОЯНИЕ: {label}. Вызывайте скорую (103/112) немедленно.")
     desc = r.get("description")
     if desc:
-        st.markdown(f"**Что это:** {desc}")
+        if desc:
+            st.markdown(f"**Что это:** {desc}")
+        else:
+            st.caption("Краткое описание состояния ещё готовится — ориентируйтесь на шаги подтверждения ниже.")
     confirm = r.get("confirm") or []
     if confirm:
         st.markdown("**Как подтвердить:**")

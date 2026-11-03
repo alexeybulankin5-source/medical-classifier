@@ -321,7 +321,10 @@ def _advice_kb():
     return _KB_CACHE
 
 def get_advice(label):
-    return _advice_kb().get(label, {"desc": "", "confirm": [], "urgent": False, "draft": True})
+    info = dict(_advice_kb().get(label, {"desc": "", "confirm": [], "urgent": False, "draft": True}))
+    if info.get("draft") and info.get("desc"):
+        info["desc"] = ""  # черновик не выдаём пациенту — витрина покажет нейтральную подпись
+    return info
 
 # --- antonym guard: направление давления (wave5b) ---
 _HYP_UP = ("повышенн", "повыс", "высокое давление", "высоком давлении", "высоким давлением",
