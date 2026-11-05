@@ -24,6 +24,10 @@ for case in suite:
         problems.append(f"urgent: ждали {case['urgent']}, получили {bool(r.get('urgent'))}")
     if case.get("urgent") and not r.get("confirm"):
         problems.append("urgent без шагов подтверждения")
+    if "urgency" in case:
+        got_u = "emergency" if r.get("urgent") else r.get("urgency")
+        if got_u != case["urgency"]:
+            problems.append(f"urgency: ждали {case['urgency']}, получили {got_u}")
     if case.get("advice_free") and (r.get("description") or r.get("confirm")):
         problems.append("совет навязан при low-уверенности")
     if case.get("draft_if_medium") and conf == "medium" and not r.get("draft_advice"):

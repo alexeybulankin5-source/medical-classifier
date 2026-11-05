@@ -321,7 +321,7 @@ def _advice_kb():
     return _KB_CACHE
 
 def get_advice(label):
-    info = dict(_advice_kb().get(label, {"desc": "", "confirm": [], "urgent": False, "draft": True}))
+    info = dict(_advice_kb().get(label, {"desc": "", "confirm": [], "urgent": False, "urgency": "doctor_visit", "draft": True}))
     if info.get("draft") and info.get("desc"):
         info["desc"] = ""  # черновик не выдаём пациенту — витрина покажет нейтральную подпись
     return info
@@ -392,6 +392,10 @@ def predict(text):
     r["description"] = info.get("desc", "") if r.get("confidence") in ("high", "medium") else ""
     r["confirm"] = list(info.get("confirm", [])) if r.get("confidence") in ("high", "medium") else []
     r["urgent"] = bool(info.get("urgent", False)) and r.get("confidence") in ("high", "medium")
+    # --- волна 7б (D-008): трёхуровневый триаж; emergency-классы принудительно urgent ---
+    if info.get("urgency") == "emergency" and r.get("confidence") in ("high", "medium"):
+        r["urgent"] = True
+    r["urgency"] = "emergency" if r["urgent"] else info.get("urgency", "doctor_visit")
     # --- криз-гвард (D-007): давление >= 180/120 -> urgent независимо от класса ---
     if not r["urgent"]:
         hit = False
@@ -405,6 +409,8 @@ def predict(text):
         if hit:
             r["urgent"] = True
             r["guard"] = (r.get("guard") + "; " if r.get("guard") else "") + "криз-гвард: давление >= 180/120 — urgent принудительно"
+            # --- волна 7б: нормализация urgency после криз-гварда ---
+            r["urgency"] = "emergency" if r["urgent"] else r.get("urgency", "doctor_visit")
             if not r.get("confirm"):
                 r["confirm"] = ["Измерьте давление ещё раз через 10-15 минут", "Есть ли боль в груди, одышка, нарушение речи или зрения?"]
     r["draft_advice"] = bool(info.get("draft", False))
