@@ -128,7 +128,7 @@
       "очная консультация врача: подтвердить или снять диагноз"
     ],
     "urgent": false,
-    "draft": true,
+    "draft": false,
     "urgency": "doctor_visit"
   },
   "гипотиреоз": {
@@ -137,7 +137,7 @@
       "очная консультация врача: подтвердить или снять диагноз"
     ],
     "urgent": false,
-    "draft": true,
+    "draft": false,
     "urgency": "doctor_visit"
   },
   "плечелопаточный периартрит": {
@@ -146,7 +146,7 @@
       "очная консультация врача: подтвердить или снять диагноз"
     ],
     "urgent": false,
-    "draft": true,
+    "draft": false,
     "urgency": "doctor_visit"
   },
   "ларингит": {
@@ -166,7 +166,7 @@
       "очная консультация врача: подтвердить или снять диагноз"
     ],
     "urgent": false,
-    "draft": true,
+    "draft": false,
     "urgency": "self_care"
   },
   "уретрит": {
@@ -175,7 +175,7 @@
       "очная консультация врача: подтвердить или снять диагноз"
     ],
     "urgent": false,
-    "draft": true,
+    "draft": false,
     "urgency": "doctor_visit"
   },
   "фарингит": {
@@ -184,7 +184,7 @@
       "очная консультация врача: подтвердить или снять диагноз"
     ],
     "urgent": false,
-    "draft": true,
+    "draft": false,
     "urgency": "doctor_visit"
   },
   "радикулит": {
@@ -204,7 +204,7 @@
       "очная консультация врача: подтвердить или снять диагноз"
     ],
     "urgent": false,
-    "draft": true,
+    "draft": false,
     "urgency": "doctor_visit"
   },
   "синдром раздраженного кишечника": {
@@ -267,7 +267,7 @@
       "очная консультация врача: подтвердить или снять диагноз"
     ],
     "urgent": false,
-    "draft": true,
+    "draft": false,
     "urgency": "doctor_visit"
   },
   "ХОБЛ": {
@@ -276,7 +276,7 @@
       "очная консультация врача: подтвердить или снять диагноз"
     ],
     "urgent": false,
-    "draft": true,
+    "draft": false,
     "urgency": "doctor_visit"
   },
   "бронхиальная астма": {
@@ -285,7 +285,7 @@
       "очная консультация врача: подтвердить или снять диагноз"
     ],
     "urgent": false,
-    "draft": true,
+    "draft": false,
     "urgency": "doctor_visit"
   },
   "гломерулонефрит": {
@@ -294,7 +294,7 @@
       "очная консультация врача: подтвердить или снять диагноз"
     ],
     "urgent": false,
-    "draft": true,
+    "draft": false,
     "urgency": "doctor_visit"
   },
   "гипотония": {
@@ -314,7 +314,7 @@
       "очная консультация врача: подтвердить или снять диагноз"
     ],
     "urgent": false,
-    "draft": true,
+    "draft": false,
     "urgency": "doctor_visit"
   },
   "простатит": {
@@ -323,7 +323,7 @@
       "очная консультация врача: подтвердить или снять диагноз"
     ],
     "urgent": false,
-    "draft": true,
+    "draft": false,
     "urgency": "doctor_visit"
   },
   "пиелонефрит": {
@@ -344,7 +344,7 @@
       "очная консультация врача: подтвердить или снять диагноз"
     ],
     "urgent": false,
-    "draft": true,
+    "draft": false,
     "urgency": "doctor_visit"
   },
   "ВСД": {
@@ -353,7 +353,7 @@
       "очная консультация врача: подтвердить или снять диагноз"
     ],
     "urgent": false,
-    "draft": true,
+    "draft": false,
     "urgency": "doctor_visit"
   },
   "конъюнктивит": {
@@ -362,7 +362,7 @@
       "очная консультация врача: подтвердить или снять диагноз"
     ],
     "urgent": false,
-    "draft": true,
+    "draft": false,
     "urgency": "doctor_visit"
   },
   "аллергический ринит": {
@@ -371,7 +371,7 @@
       "очная консультация врача: подтвердить или снять диагноз"
     ],
     "urgent": false,
-    "draft": true,
+    "draft": false,
     "urgency": "doctor_visit"
   },
   "мочекаменная болезнь": {
@@ -380,7 +380,7 @@
       "очная консультация врача: подтвердить или снять диагноз"
     ],
     "urgent": false,
-    "draft": true,
+    "draft": false,
     "urgency": "doctor_visit"
   },
   "синдром сухого глаза": {
@@ -389,7 +389,7 @@
       "очная консультация врача: подтвердить или снять диагноз"
     ],
     "urgent": false,
-    "draft": true,
+    "draft": false,
     "urgency": "doctor_visit"
   },
   "остеохондроз шейный": {
@@ -398,7 +398,7 @@
       "очная консультация врача: подтвердить или снять диагноз"
     ],
     "urgent": false,
-    "draft": true,
+    "draft": false,
     "urgency": "doctor_visit"
   },
   "неврастения": {
@@ -418,7 +418,7 @@
       "очная консультация врача: подтвердить или снять диагноз"
     ],
     "urgent": false,
-    "draft": true,
+    "draft": false,
     "urgency": "doctor_visit"
   },
   "контактный дерматит": {
@@ -427,7 +427,7 @@
       "очная консультация врача: подтвердить или снять диагноз"
     ],
     "urgent": false,
-    "draft": true,
+    "draft": false,
     "urgency": "doctor_visit"
   },
   "дуоденит": {
@@ -447,7 +447,7 @@
       "очная консультация врача: подтвердить или снять диагноз"
     ],
     "urgent": false,
-    "draft": true,
+    "draft": false,
     "urgency": "doctor_visit"
   },
   "недержание мочи": {
@@ -456,7 +456,7 @@
       "очная консультация врача: подтвердить или снять диагноз"
     ],
     "urgent": false,
-    "draft": true,
+    "draft": false,
     "urgency": "doctor_visit"
   },
   "дисбактериоз": {
@@ -465,7 +465,7 @@
       "очная консультация врача: подтвердить или снять диагноз"
     ],
     "urgent": false,
-    "draft": true,
+    "draft": false,
     "urgency": "self_care"
   },
   "мигрень": {
@@ -474,7 +474,7 @@
       "очная консультация врача: подтвердить или снять диагноз"
     ],
     "urgent": false,
-    "draft": true,
+    "draft": false,
     "urgency": "doctor_visit"
   },
   "бурсит": {
@@ -483,7 +483,7 @@
       "очная консультация врача: подтвердить или снять диагноз"
     ],
     "urgent": false,
-    "draft": true,
+    "draft": false,
     "urgency": "doctor_visit"
   },
   "псориаз": {
@@ -503,7 +503,7 @@
       "очная консультация врача: подтвердить или снять диагноз"
     ],
     "urgent": false,
-    "draft": true,
+    "draft": false,
     "urgency": "doctor_visit"
   },
   "акне": {
@@ -512,7 +512,7 @@
       "очная консультация врача: подтвердить или снять диагноз"
     ],
     "urgent": false,
-    "draft": true,
+    "draft": false,
     "urgency": "self_care"
   },
   "головокружение": {
@@ -521,7 +521,7 @@
       "очная консультация врача: подтвердить или снять диагноз"
     ],
     "urgent": false,
-    "draft": true,
+    "draft": false,
     "urgency": "doctor_visit"
   },
   "тахикардия": {
@@ -530,7 +530,7 @@
       "очная консультация врача: подтвердить или снять диагноз"
     ],
     "urgent": false,
-    "draft": true,
+    "draft": false,
     "urgency": "doctor_visit"
   },
   "гипертиреоз": {
@@ -562,7 +562,7 @@
       "очная консультация врача: подтвердить или снять диагноз"
     ],
     "urgent": false,
-    "draft": true,
+    "draft": false,
     "urgency": "doctor_visit"
   },
   "атопический дерматит": {
@@ -571,7 +571,7 @@
       "очная консультация врача: подтвердить или снять диагноз"
     ],
     "urgent": false,
-    "draft": true,
+    "draft": false,
     "urgency": "doctor_visit"
   },
   "эзофагит": {
@@ -580,7 +580,7 @@
       "очная консультация врача: подтвердить или снять диагноз"
     ],
     "urgent": false,
-    "draft": true,
+    "draft": false,
     "urgency": "doctor_visit"
   },
   "холецистит": {
@@ -633,7 +633,7 @@
       "очная консультация врача: подтвердить или снять диагноз"
     ],
     "urgent": false,
-    "draft": true,
+    "draft": false,
     "urgency": "doctor_visit"
   },
   "герпес": {
@@ -642,7 +642,7 @@
       "очная консультация врача: подтвердить или снять диагноз"
     ],
     "urgent": false,
-    "draft": true,
+    "draft": false,
     "urgency": "doctor_visit"
   },
   "микоз стоп": {
@@ -651,7 +651,7 @@
       "очная консультация врача: подтвердить или снять диагноз"
     ],
     "urgent": false,
-    "draft": true,
+    "draft": false,
     "urgency": "self_care"
   },
   "панические атаки": {
@@ -660,7 +660,7 @@
       "очная консультация врача: подтвердить или снять диагноз"
     ],
     "urgent": false,
-    "draft": true,
+    "draft": false,
     "urgency": "doctor_visit"
   },
   "сахарный диабет 2 типа": {
@@ -669,7 +669,7 @@
       "очная консультация врача: подтвердить или снять диагноз"
     ],
     "urgent": false,
-    "draft": true,
+    "draft": false,
     "urgency": "doctor_visit"
   },
   "ревматоидный артрит": {
@@ -678,7 +678,7 @@
       "очная консультация врача: подтвердить или снять диагноз"
     ],
     "urgent": false,
-    "draft": true,
+    "draft": false,
     "urgency": "doctor_visit"
   },
   "язва желудка": {
@@ -698,7 +698,7 @@
       "очная консультация врача: подтвердить или снять диагноз"
     ],
     "urgent": false,
-    "draft": true,
+    "draft": false,
     "urgency": "doctor_visit"
   },
   "подагра": {
@@ -707,7 +707,7 @@
       "очная консультация врача: подтвердить или снять диагноз"
     ],
     "urgent": false,
-    "draft": true,
+    "draft": false,
     "urgency": "doctor_visit"
   },
   "бронхит": {
@@ -727,7 +727,7 @@
       "очная консультация врача: подтвердить или снять диагноз"
     ],
     "urgent": false,
-    "draft": true,
+    "draft": false,
     "urgency": "doctor_visit"
   },
   "пищевое отравление": {
@@ -736,7 +736,7 @@
       "очная консультация врача: подтвердить или снять диагноз"
     ],
     "urgent": false,
-    "draft": true,
+    "draft": false,
     "urgency": "doctor_visit"
   },
   "остеохондроз поясничный": {
@@ -745,7 +745,7 @@
       "очная консультация врача: подтвердить или снять диагноз"
     ],
     "urgent": false,
-    "draft": true,
+    "draft": false,
     "urgency": "doctor_visit"
   },
   "чесотка": {
@@ -754,7 +754,7 @@
       "очная консультация врача: подтвердить или снять диагноз"
     ],
     "urgent": false,
-    "draft": true,
+    "draft": false,
     "urgency": "doctor_visit"
   },
   "гастрит": {
@@ -763,7 +763,7 @@
       "очная консультация врача: подтвердить или снять диагноз"
     ],
     "urgent": false,
-    "draft": true,
+    "draft": false,
     "urgency": "doctor_visit"
   },
   "ожирение": {
@@ -772,7 +772,7 @@
       "очная консультация врача: подтвердить или снять диагноз"
     ],
     "urgent": false,
-    "draft": true,
+    "draft": false,
     "urgency": "doctor_visit"
   },
   "панкреатит": {
@@ -792,7 +792,7 @@
       "очная консультация врача: подтвердить или снять диагноз"
     ],
     "urgent": false,
-    "draft": true,
+    "draft": false,
     "urgency": "self_care"
   },
   "ГЭРБ": {
@@ -801,7 +801,7 @@
       "очная консультация врача: подтвердить или снять диагноз"
     ],
     "urgent": false,
-    "draft": true,
+    "draft": false,
     "urgency": "doctor_visit"
   },
   "экзема": {
@@ -821,7 +821,7 @@
       "очная консультация врача: подтвердить или снять диагноз"
     ],
     "urgent": false,
-    "draft": true,
+    "draft": false,
     "urgency": "self_care"
   },
   "себорейный дерматит": {
@@ -830,7 +830,7 @@
       "очная консультация врача: подтвердить или снять диагноз"
     ],
     "urgent": false,
-    "draft": true,
+    "draft": false,
     "urgency": "self_care"
   },
   "фурункул": {
@@ -839,7 +839,7 @@
       "очная консультация врача: подтвердить или снять диагноз"
     ],
     "urgent": false,
-    "draft": true,
+    "draft": false,
     "urgency": "doctor_visit"
   },
   "рожистое воспаление": {
@@ -848,7 +848,7 @@
       "очная консультация врача: подтвердить или снять диагноз"
     ],
     "urgent": false,
-    "draft": true,
+    "draft": false,
     "urgency": "doctor_visit"
   },
   "туннельный синдром": {
@@ -857,7 +857,7 @@
       "очная консультация врача: подтвердить или снять диагноз"
     ],
     "urgent": false,
-    "draft": true,
+    "draft": false,
     "urgency": "doctor_visit"
   },
   "тремор": {
@@ -866,7 +866,7 @@
       "очная консультация врача: подтвердить или снять диагноз"
     ],
     "urgent": false,
-    "draft": true,
+    "draft": false,
     "urgency": "doctor_visit"
   },
   "плантарный фасциит": {
@@ -875,7 +875,7 @@
       "очная консультация врача: подтвердить или снять диагноз"
     ],
     "urgent": false,
-    "draft": true,
+    "draft": false,
     "urgency": "doctor_visit"
   },
   "бурсит плечевого сустава": {
@@ -884,7 +884,7 @@
       "очная консультация врача: подтвердить или снять диагноз"
     ],
     "urgent": false,
-    "draft": true,
+    "draft": false,
     "urgency": "doctor_visit"
   },
   "миозит шеи": {
@@ -893,7 +893,7 @@
       "очная консультация врача: подтвердить или снять диагноз"
     ],
     "urgent": false,
-    "draft": true,
+    "draft": false,
     "urgency": "doctor_visit"
   },
   "тендинит ахиллова сухожилия": {
@@ -902,7 +902,7 @@
       "очная консультация врача: подтвердить или снять диагноз"
     ],
     "urgent": false,
-    "draft": true,
+    "draft": false,
     "urgency": "doctor_visit"
   },
   "остеохондроз грудной": {
@@ -911,7 +911,7 @@
       "очная консультация врача: подтвердить или снять диагноз"
     ],
     "urgent": false,
-    "draft": true,
+    "draft": false,
     "urgency": "doctor_visit"
   },
   "растяжение голеностопа": {
@@ -920,7 +920,7 @@
       "очная консультация врача: подтвердить или снять диагноз"
     ],
     "urgent": false,
-    "draft": true,
+    "draft": false,
     "urgency": "doctor_visit"
   },
   "нарушение менструального цикла": {
@@ -929,7 +929,7 @@
       "очная консультация врача: подтвердить или снять диагноз"
     ],
     "urgent": false,
-    "draft": true,
+    "draft": false,
     "urgency": "doctor_visit"
   },
   "климакс": {
@@ -938,7 +938,7 @@
       "очная консультация врача: подтвердить или снять диагноз"
     ],
     "urgent": false,
-    "draft": true,
+    "draft": false,
     "urgency": "doctor_visit"
   },
   "молочница": {
@@ -947,7 +947,7 @@
       "очная консультация врача: подтвердить или снять диагноз"
     ],
     "urgent": false,
-    "draft": true,
+    "draft": false,
     "urgency": "doctor_visit"
   },
   "предменструальный синдром": {
@@ -956,7 +956,7 @@
       "очная консультация врача: подтвердить или снять диагноз"
     ],
     "urgent": false,
-    "draft": true,
+    "draft": false,
     "urgency": "self_care"
   },
   "аднексит": {
@@ -965,7 +965,7 @@
       "очная консультация врача: подтвердить или снять диагноз"
     ],
     "urgent": false,
-    "draft": true,
+    "draft": false,
     "urgency": "doctor_visit"
   },
   "носовое кровотечение": {
@@ -974,7 +974,7 @@
       "очная консультация врача: подтвердить или снять диагноз"
     ],
     "urgent": false,
-    "draft": true,
+    "draft": false,
     "urgency": "doctor_visit"
   },
   "катаракта": {
@@ -983,7 +983,7 @@
       "очная консультация врача: подтвердить или снять диагноз"
     ],
     "urgent": false,
-    "draft": true,
+    "draft": false,
     "urgency": "doctor_visit"
   },
   "глаукома": {
@@ -992,7 +992,7 @@
       "очная консультация врача: подтвердить или снять диагноз"
     ],
     "urgent": false,
-    "draft": true,
+    "draft": false,
     "urgency": "doctor_visit"
   },
   "ветрянка": {
@@ -1001,7 +1001,7 @@
       "очная консультация врача: подтвердить или снять диагноз"
     ],
     "urgent": false,
-    "draft": true,
+    "draft": false,
     "urgency": "doctor_visit"
   },
   "краснуха": {
@@ -1010,7 +1010,7 @@
       "очная консультация врача: подтвердить или снять диагноз"
     ],
     "urgent": false,
-    "draft": true,
+    "draft": false,
     "urgency": "doctor_visit"
   },
   "скарлатина": {
@@ -1019,7 +1019,7 @@
       "очная консультация врача: подтвердить или снять диагноз"
     ],
     "urgent": false,
-    "draft": true,
+    "draft": false,
     "urgency": "doctor_visit"
   },
   "коклюш": {
@@ -1028,7 +1028,7 @@
       "очная консультация врача: подтвердить или снять диагноз"
     ],
     "urgent": false,
-    "draft": true,
+    "draft": false,
     "urgency": "doctor_visit"
   },
   "аденоиды": {
@@ -1037,7 +1037,7 @@
       "очная консультация врача: подтвердить или снять диагноз"
     ],
     "urgent": false,
-    "draft": true,
+    "draft": false,
     "urgency": "doctor_visit"
   },
   "энтеровирусная инфекция": {
@@ -1046,7 +1046,7 @@
       "очная консультация врача: подтвердить или снять диагноз"
     ],
     "urgent": false,
-    "draft": true,
+    "draft": false,
     "urgency": "doctor_visit"
   },
   "кишечная инфекция у детей": {
@@ -1055,7 +1055,7 @@
       "очная консультация врача: подтвердить или снять диагноз"
     ],
     "urgent": false,
-    "draft": true,
+    "draft": false,
     "urgency": "doctor_visit"
   },
   "прорезывание зубов": {
@@ -1064,7 +1064,7 @@
       "очная консультация врача: подтвердить или снять диагноз"
     ],
     "urgent": false,
-    "draft": true,
+    "draft": false,
     "urgency": "self_care"
   },
   "потница": {
@@ -1073,7 +1073,7 @@
       "очная консультация врача: подтвердить или снять диагноз"
     ],
     "urgent": false,
-    "draft": true,
+    "draft": false,
     "urgency": "self_care"
   },
   "детская розеола": {
@@ -1082,7 +1082,7 @@
       "очная консультация врача: подтвердить или снять диагноз"
     ],
     "urgent": false,
-    "draft": true,
+    "draft": false,
     "urgency": "doctor_visit"
   },
   "аденома простаты": {
@@ -1091,7 +1091,7 @@
       "очная консультация врача: подтвердить или снять диагноз"
     ],
     "urgent": false,
-    "draft": true,
+    "draft": false,
     "urgency": "doctor_visit"
   },
   "баланопостит": {
@@ -1100,7 +1100,7 @@
       "очная консультация врача: подтвердить или снять диагноз"
     ],
     "urgent": false,
-    "draft": true,
+    "draft": false,
     "urgency": "doctor_visit"
   },
   "анальная трещина": {
@@ -1109,7 +1109,7 @@
       "очная консультация врача: подтвердить или снять диагноз"
     ],
     "urgent": false,
-    "draft": true,
+    "draft": false,
     "urgency": "doctor_visit"
   },
   "анальный зуд": {
@@ -1118,7 +1118,7 @@
       "очная консультация врача: подтвердить или снять диагноз"
     ],
     "urgent": false,
-    "draft": true,
+    "draft": false,
     "urgency": "doctor_visit"
   },
   "парапроктит": {
@@ -1127,7 +1127,7 @@
       "очная консультация врача: подтвердить или снять диагноз"
     ],
     "urgent": false,
-    "draft": true,
+    "draft": false,
     "urgency": "doctor_visit"
   },
   "проктит": {
@@ -1136,7 +1136,7 @@
       "очная консультация врача: подтвердить или снять диагноз"
     ],
     "urgent": false,
-    "draft": true,
+    "draft": false,
     "urgency": "doctor_visit"
   },
   "кариес": {
@@ -1145,7 +1145,7 @@
       "очная консультация врача: подтвердить или снять диагноз"
     ],
     "urgent": false,
-    "draft": true,
+    "draft": false,
     "urgency": "doctor_visit"
   },
   "пульпит": {
@@ -1154,7 +1154,7 @@
       "очная консультация врача: подтвердить или снять диагноз"
     ],
     "urgent": false,
-    "draft": true,
+    "draft": false,
     "urgency": "doctor_visit"
   },
   "гингивит": {
@@ -1163,7 +1163,7 @@
       "очная консультация врача: подтвердить или снять диагноз"
     ],
     "urgent": false,
-    "draft": true,
+    "draft": false,
     "urgency": "doctor_visit"
   },
   "пародонтит": {
@@ -1172,7 +1172,7 @@
       "очная консультация врача: подтвердить или снять диагноз"
     ],
     "urgent": false,
-    "draft": true,
+    "draft": false,
     "urgency": "doctor_visit"
   },
   "афтозный стоматит": {
@@ -1181,7 +1181,7 @@
       "очная консультация врача: подтвердить или снять диагноз"
     ],
     "urgent": false,
-    "draft": true,
+    "draft": false,
     "urgency": "doctor_visit"
   },
   "глоссит": {
@@ -1190,7 +1190,7 @@
       "очная консультация врача: подтвердить или снять диагноз"
     ],
     "urgent": false,
-    "draft": true,
+    "draft": false,
     "urgency": "doctor_visit"
   },
   "заеды": {
@@ -1199,7 +1199,7 @@
       "очная консультация врача: подтвердить или снять диагноз"
     ],
     "urgent": false,
-    "draft": true,
+    "draft": false,
     "urgency": "self_care"
   },
   "отит наружный": {
@@ -1208,7 +1208,7 @@
       "очная консультация врача: подтвердить или снять диагноз"
     ],
     "urgent": false,
-    "draft": true,
+    "draft": false,
     "urgency": "doctor_visit"
   },
   "тиннитус": {
@@ -1217,7 +1217,7 @@
       "очная консультация врача: подтвердить или снять диагноз"
     ],
     "urgent": false,
-    "draft": true,
+    "draft": false,
     "urgency": "doctor_visit"
   },
   "евстахиит": {
@@ -1226,7 +1226,7 @@
       "очная консультация врача: подтвердить или снять диагноз"
     ],
     "urgent": false,
-    "draft": true,
+    "draft": false,
     "urgency": "doctor_visit"
   },
   "кератит": {
@@ -1235,7 +1235,7 @@
       "очная консультация врача: подтвердить или снять диагноз"
     ],
     "urgent": false,
-    "draft": true,
+    "draft": false,
     "urgency": "doctor_visit"
   },
   "варикоз": {
@@ -1244,7 +1244,7 @@
       "очная консультация врача: подтвердить или снять диагноз"
     ],
     "urgent": false,
-    "draft": true,
+    "draft": false,
     "urgency": "doctor_visit"
   },
   "тромбофлебит": {
@@ -1253,7 +1253,7 @@
       "очная консультация врача: подтвердить или снять диагноз"
     ],
     "urgent": false,
-    "draft": true,
+    "draft": false,
     "urgency": "doctor_visit"
   },
   "депрессия": {
@@ -1262,7 +1262,7 @@
       "очная консультация врача: подтвердить или снять диагноз"
     ],
     "urgent": false,
-    "draft": true,
+    "draft": false,
     "urgency": "doctor_visit"
   },
   "невралгия затылочного нерва": {
@@ -1271,7 +1271,7 @@
       "очная консультация врача: подтвердить или снять диагноз"
     ],
     "urgent": false,
-    "draft": true,
+    "draft": false,
     "urgency": "doctor_visit"
   },
   "апноэ сна": {
@@ -1280,7 +1280,7 @@
       "очная консультация врача: подтвердить или снять диагноз"
     ],
     "urgent": false,
-    "draft": true,
+    "draft": false,
     "urgency": "doctor_visit"
   },
   "сахарный диабет 1 типа": {
@@ -1289,7 +1289,7 @@
       "очная консультация врача: подтвердить или снять диагноз"
     ],
     "urgent": false,
-    "draft": true,
+    "draft": false,
     "urgency": "doctor_visit"
   },
   "лишай": {
@@ -1298,7 +1298,7 @@
       "очная консультация врача: подтвердить или снять диагноз"
     ],
     "urgent": false,
-    "draft": true,
+    "draft": false,
     "urgency": "doctor_visit"
   },
   "грыжа поясничного отдела": {
@@ -1307,7 +1307,7 @@
       "очная консультация врача: подтвердить или снять диагноз"
     ],
     "urgent": false,
-    "draft": true,
+    "draft": false,
     "urgency": "doctor_visit"
   },
   "эпикондилит": {
@@ -1316,7 +1316,7 @@
       "очная консультация врача: подтвердить или снять диагноз"
     ],
     "urgent": false,
-    "draft": true,
+    "draft": false,
     "urgency": "doctor_visit"
   },
   "повреждение мениска": {
@@ -1325,7 +1325,7 @@
       "очная консультация врача: подтвердить или снять диагноз"
     ],
     "urgent": false,
-    "draft": true,
+    "draft": false,
     "urgency": "doctor_visit"
   },
   "плоскостопие": {
@@ -1334,7 +1334,7 @@
       "очная консультация врача: подтвердить или снять диагноз"
     ],
     "urgent": false,
-    "draft": true,
+    "draft": false,
     "urgency": "doctor_visit"
   },
   "остеопороз": {
@@ -1343,7 +1343,7 @@
       "очная консультация врача: подтвердить или снять диагноз"
     ],
     "urgent": false,
-    "draft": true,
+    "draft": false,
     "urgency": "doctor_visit"
   },
   "сколиоз": {
@@ -1352,7 +1352,7 @@
       "очная консультация врача: подтвердить или снять диагноз"
     ],
     "urgent": false,
-    "draft": true,
+    "draft": false,
     "urgency": "doctor_visit"
   },
   "младенческие колики": {
@@ -1361,7 +1361,7 @@
       "очная консультация врача: подтвердить или снять диагноз"
     ],
     "urgent": false,
-    "draft": true,
+    "draft": false,
     "urgency": "self_care"
   },
   "ложный круп": {
@@ -1370,7 +1370,7 @@
       "очная консультация врача: подтвердить или снять диагноз"
     ],
     "urgent": false,
-    "draft": true,
+    "draft": false,
     "urgency": "doctor_visit"
   },
   "диатез у грудничков": {
@@ -1379,7 +1379,7 @@
       "очная консультация врача: подтвердить или снять диагноз"
     ],
     "urgent": false,
-    "draft": true,
+    "draft": false,
     "urgency": "self_care"
   },
   "энурез у детей": {
@@ -1388,7 +1388,7 @@
       "очная консультация врача: подтвердить или снять диагноз"
     ],
     "urgent": false,
-    "draft": true,
+    "draft": false,
     "urgency": "doctor_visit"
   },
   "хронический тонзиллит": {
@@ -1397,7 +1397,7 @@
       "очная консультация врача: подтвердить или снять диагноз"
     ],
     "urgent": false,
-    "draft": true,
+    "draft": false,
     "urgency": "doctor_visit"
   },
   "блефарит": {
@@ -1406,7 +1406,7 @@
       "очная консультация врача: подтвердить или снять диагноз"
     ],
     "urgent": false,
-    "draft": true,
+    "draft": false,
     "urgency": "doctor_visit"
   },
   "атеросклероз сосудов ног": {
@@ -1415,7 +1415,7 @@
       "очная консультация врача: подтвердить или снять диагноз"
     ],
     "urgent": false,
-    "draft": true,
+    "draft": false,
     "urgency": "doctor_visit"
   },
   "лимфостаз": {
@@ -1424,7 +1424,7 @@
       "очная консультация врача: подтвердить или снять диагноз"
     ],
     "urgent": false,
-    "draft": true,
+    "draft": false,
     "urgency": "doctor_visit"
   },
   "трофическая язва": {
@@ -1433,7 +1433,7 @@
       "очная консультация врача: подтвердить или снять диагноз"
     ],
     "urgent": false,
-    "draft": true,
+    "draft": false,
     "urgency": "doctor_visit"
   },
   "полинейропатия": {
@@ -1442,7 +1442,7 @@
       "очная консультация врача: подтвердить или снять диагноз"
     ],
     "urgent": false,
-    "draft": true,
+    "draft": false,
     "urgency": "doctor_visit"
   },
   "дискинезия желчевыводящих путей": {
@@ -1451,7 +1451,7 @@
       "очная консультация врача: подтвердить или снять диагноз"
     ],
     "urgent": false,
-    "draft": true,
+    "draft": false,
     "urgency": "doctor_visit"
   },
   "жировой гепатоз": {
@@ -1460,7 +1460,7 @@
       "очная консультация врача: подтвердить или снять диагноз"
     ],
     "urgent": false,
-    "draft": true,
+    "draft": false,
     "urgency": "doctor_visit"
   },
   "диарея": {
@@ -1469,7 +1469,7 @@
       "очная консультация врача: подтвердить или снять диагноз"
     ],
     "urgent": false,
-    "draft": true,
+    "draft": false,
     "urgency": "doctor_visit"
   },
   "гельминтоз": {
@@ -1478,7 +1478,7 @@
       "очная консультация врача: подтвердить или снять диагноз"
     ],
     "urgent": false,
-    "draft": true,
+    "draft": false,
     "urgency": "doctor_visit"
   },
   "дисменорея": {
@@ -1487,7 +1487,7 @@
       "очная консультация врача: подтвердить или снять диагноз"
     ],
     "urgent": false,
-    "draft": true,
+    "draft": false,
     "urgency": "doctor_visit"
   },
   "миома матки": {
@@ -1496,7 +1496,7 @@
       "очная консультация врача: подтвердить или снять диагноз"
     ],
     "urgent": false,
-    "draft": true,
+    "draft": false,
     "urgency": "doctor_visit"
   },
   "эндометриоз": {
@@ -1505,7 +1505,7 @@
       "очная консультация врача: подтвердить или снять диагноз"
     ],
     "urgent": false,
-    "draft": true,
+    "draft": false,
     "urgency": "doctor_visit"
   },
   "бактериальный вагиноз": {
@@ -1514,7 +1514,7 @@
       "очная консультация врача: подтвердить или снять диагноз"
     ],
     "urgent": false,
-    "draft": true,
+    "draft": false,
     "urgency": "doctor_visit"
   },
   "киста яичника": {
@@ -1523,7 +1523,7 @@
       "очная консультация врача: подтвердить или снять диагноз"
     ],
     "urgent": false,
-    "draft": true,
+    "draft": false,
     "urgency": "doctor_visit"
   },
   "варикоцеле": {
@@ -1532,7 +1532,7 @@
       "очная консультация врача: подтвердить или снять диагноз"
     ],
     "urgent": false,
-    "draft": true,
+    "draft": false,
     "urgency": "doctor_visit"
   },
   "паховая грыжа": {
@@ -1541,7 +1541,7 @@
       "очная консультация врача: подтвердить или снять диагноз"
     ],
     "urgent": false,
-    "draft": true,
+    "draft": false,
     "urgency": "doctor_visit"
   },
   "коксартроз": {
@@ -1550,7 +1550,7 @@
       "очная консультация врача: подтвердить или снять диагноз"
     ],
     "urgent": false,
-    "draft": true,
+    "draft": false,
     "urgency": "doctor_visit"
   },
   "розацеа": {
@@ -1559,7 +1559,7 @@
       "очная консультация врача: подтвердить или снять диагноз"
     ],
     "urgent": false,
-    "draft": true,
+    "draft": false,
     "urgency": "doctor_visit"
   },
   "витилиго": {
@@ -1568,7 +1568,7 @@
       "очная консультация врача: подтвердить или снять диагноз"
     ],
     "urgent": false,
-    "draft": true,
+    "draft": false,
     "urgency": "self_care"
   },
   "алопеция": {
@@ -1577,7 +1577,7 @@
       "очная консультация врача: подтвердить или снять диагноз"
     ],
     "urgent": false,
-    "draft": true,
+    "draft": false,
     "urgency": "self_care"
   },
   "натоптыши и мозоли": {
@@ -1586,7 +1586,7 @@
       "очная консультация врача: подтвердить или снять диагноз"
     ],
     "urgent": false,
-    "draft": true,
+    "draft": false,
     "urgency": "self_care"
   },
   "бородавки": {
@@ -1595,7 +1595,7 @@
       "очная консультация врача: подтвердить или снять диагноз"
     ],
     "urgent": false,
-    "draft": true,
+    "draft": false,
     "urgency": "self_care"
   },
   "опрелости": {
@@ -1604,7 +1604,7 @@
       "очная консультация врача: подтвердить или снять диагноз"
     ],
     "urgent": false,
-    "draft": true,
+    "draft": false,
     "urgency": "self_care"
   },
   "ожоги": {
@@ -1613,7 +1613,7 @@
       "очная консультация врача: подтвердить или снять диагноз"
     ],
     "urgent": false,
-    "draft": true,
+    "draft": false,
     "urgency": "doctor_visit"
   },
   "солнечный ожог": {
@@ -1622,7 +1622,7 @@
       "очная консультация врача: подтвердить или снять диагноз"
     ],
     "urgent": false,
-    "draft": true,
+    "draft": false,
     "urgency": "self_care"
   },
   "укусы насекомых": {
@@ -1631,7 +1631,7 @@
       "очная консультация врача: подтвердить или снять диагноз"
     ],
     "urgent": false,
-    "draft": true,
+    "draft": false,
     "urgency": "self_care"
   },
   "лимфаденит": {
@@ -1640,7 +1640,7 @@
       "очная консультация врача: подтвердить или снять диагноз"
     ],
     "urgent": false,
-    "draft": true,
+    "draft": false,
     "urgency": "doctor_visit"
   },
   "перелом": {
@@ -1649,7 +1649,7 @@
       "очная консультация врача: подтвердить или снять диагноз"
     ],
     "urgent": false,
-    "draft": true,
+    "draft": false,
     "urgency": "doctor_visit"
   },
   "обморожение": {
@@ -1658,7 +1658,7 @@
       "очная консультация врача: подтвердить или снять диагноз"
     ],
     "urgent": false,
-    "draft": true,
+    "draft": false,
     "urgency": "doctor_visit"
   },
   "дефицит витамина D": {
@@ -1667,7 +1667,7 @@
       "очная консультация врача: подтвердить или снять диагноз"
     ],
     "urgent": false,
-    "draft": true,
+    "draft": false,
     "urgency": "doctor_visit"
   },
   "метеоризм": {
@@ -1676,7 +1676,7 @@
       "очная консультация врача: подтвердить или снять диагноз"
     ],
     "urgent": false,
-    "draft": true,
+    "draft": false,
     "urgency": "self_care"
   },
   "гипертонический криз": {
@@ -1686,7 +1686,7 @@
       "Есть ли боль в груди, одышка, нарушение речи или зрения?"
     ],
     "urgent": true,
-    "draft": true,
+    "draft": false,
     "urgency": "emergency"
   },
   "паронихия": {
@@ -1695,7 +1695,7 @@
       "очная консультация врача: подтвердить или снять диагноз"
     ],
     "urgent": false,
-    "draft": true,
+    "draft": false,
     "urgency": "doctor_visit"
   },
   "вросший ноготь": {
@@ -1704,7 +1704,7 @@
       "очная консультация врача: подтвердить или снять диагноз"
     ],
     "urgent": false,
-    "draft": true,
+    "draft": false,
     "urgency": "doctor_visit"
   },
   "ринит": {
@@ -1713,7 +1713,7 @@
       "очная консультация врача: подтвердить или снять диагноз"
     ],
     "urgent": false,
-    "draft": true,
+    "draft": false,
     "urgency": "doctor_visit"
   },
   "серная пробка": {
@@ -1722,7 +1722,7 @@
       "очная консультация врача: подтвердить или снять диагноз"
     ],
     "urgent": false,
-    "draft": true,
+    "draft": false,
     "urgency": "self_care"
   },
   "близорукость": {
@@ -1731,7 +1731,7 @@
       "очная консультация врача: подтвердить или снять диагноз"
     ],
     "urgent": false,
-    "draft": true,
+    "draft": false,
     "urgency": "self_care"
   },
   "стоматит": {
@@ -1740,7 +1740,7 @@
       "очная консультация врача: подтвердить или снять диагноз"
     ],
     "urgent": false,
-    "draft": true,
+    "draft": false,
     "urgency": "doctor_visit"
   },
   "грыжа пищеводного отверстия диафрагмы": {
@@ -1749,7 +1749,7 @@
       "очная консультация врача: подтвердить или снять диагноз"
     ],
     "urgent": false,
-    "draft": true,
+    "draft": false,
     "urgency": "doctor_visit"
   },
   "ротавирусная инфекция": {
@@ -1758,7 +1758,7 @@
       "очная консультация врача: подтвердить или снять диагноз"
     ],
     "urgent": false,
-    "draft": true,
+    "draft": false,
     "urgency": "doctor_visit"
   },
   "язвенный колит": {
@@ -1767,7 +1767,7 @@
       "очная консультация врача: подтвердить или снять диагноз"
     ],
     "urgent": false,
-    "draft": true,
+    "draft": false,
     "urgency": "doctor_visit"
   },
   "гепатит": {
@@ -1776,7 +1776,7 @@
       "очная консультация врача: подтвердить или снять диагноз"
     ],
     "urgent": false,
-    "draft": true,
+    "draft": false,
     "urgency": "doctor_visit"
   },
   "вегетососудистая дистония": {
@@ -1785,7 +1785,7 @@
       "очная консультация врача: подтвердить или снять диагноз"
     ],
     "urgent": false,
-    "draft": true,
+    "draft": false,
     "urgency": "self_care"
   },
   "тромбоз глубоких вен": {
@@ -1794,7 +1794,7 @@
       "очная консультация врача: подтвердить или снять диагноз"
     ],
     "urgent": false,
-    "draft": true,
+    "draft": false,
     "urgency": "doctor_visit"
   },
   "межрёберная невралгия": {
@@ -1803,7 +1803,7 @@
       "очная консультация врача: подтвердить или снять диагноз"
     ],
     "urgent": false,
-    "draft": true,
+    "draft": false,
     "urgency": "doctor_visit"
   },
   "сотрясение мозга": {
@@ -1812,7 +1812,7 @@
       "очная консультация врача: подтвердить или снять диагноз"
     ],
     "urgent": false,
-    "draft": true,
+    "draft": false,
     "urgency": "doctor_visit"
   },
   "болезнь Паркинсона": {
@@ -1821,7 +1821,7 @@
       "очная консультация врача: подтвердить или снять диагноз"
     ],
     "urgent": false,
-    "draft": true,
+    "draft": false,
     "urgency": "doctor_visit"
   },
   "вывих": {
@@ -1830,7 +1830,7 @@
       "очная консультация врача: подтвердить или снять диагноз"
     ],
     "urgent": false,
-    "draft": true,
+    "draft": false,
     "urgency": "doctor_visit"
   },
   "грибок ногтей": {
@@ -1839,7 +1839,7 @@
       "очная консультация врача: подтвердить или снять диагноз"
     ],
     "urgent": false,
-    "draft": true,
+    "draft": false,
     "urgency": "self_care"
   },
   "розовый лишай": {
@@ -1848,7 +1848,7 @@
       "очная консультация врача: подтвердить или снять диагноз"
     ],
     "urgent": false,
-    "draft": true,
+    "draft": false,
     "urgency": "doctor_visit"
   },
   "эректильная дисфункция": {
@@ -1857,7 +1857,7 @@
       "очная консультация врача: подтвердить или снять диагноз"
     ],
     "urgent": false,
-    "draft": true,
+    "draft": false,
     "urgency": "doctor_visit"
   },
   "токсикоз беременности": {
@@ -1866,7 +1866,7 @@
       "очная консультация врача: подтвердить или снять диагноз"
     ],
     "urgent": false,
-    "draft": true,
+    "draft": false,
     "urgency": "doctor_visit"
   },
   "мастит": {
@@ -1875,7 +1875,7 @@
       "очная консультация врача: подтвердить или снять диагноз"
     ],
     "urgent": false,
-    "draft": true,
+    "draft": false,
     "urgency": "doctor_visit"
   },
   "лактостаз": {
@@ -1884,7 +1884,7 @@
       "очная консультация врача: подтвердить или снять диагноз"
     ],
     "urgent": false,
-    "draft": true,
+    "draft": false,
     "urgency": "doctor_visit"
   },
   "корь": {
@@ -1893,7 +1893,7 @@
       "очная консультация врача: подтвердить или снять диагноз"
     ],
     "urgent": false,
-    "draft": true,
+    "draft": false,
     "urgency": "doctor_visit"
   },
   "рахит": {
@@ -1902,7 +1902,7 @@
       "очная консультация врача: подтвердить или снять диагноз"
     ],
     "urgent": false,
-    "draft": true,
+    "draft": false,
     "urgency": "doctor_visit"
   },
   "переутомление": {
@@ -1911,7 +1911,7 @@
       "очная консультация врача: подтвердить или снять диагноз"
     ],
     "urgent": false,
-    "draft": true,
+    "draft": false,
     "urgency": "self_care"
   },
   "инфекционный мононуклеоз": {
@@ -1920,7 +1920,7 @@
       "очная консультация врача: подтвердить или снять диагноз"
     ],
     "urgent": false,
-    "draft": true,
+    "draft": false,
     "urgency": "doctor_visit"
   },
   "пневмоторакс": {
@@ -1929,7 +1929,7 @@
       "очная консультация врача: подтвердить или снять диагноз"
     ],
     "urgent": false,
-    "draft": true,
+    "draft": false,
     "urgency": "emergency"
   },
   "расслоение аорты": {
@@ -1938,7 +1938,7 @@
       "очная консультация врача: подтвердить или снять диагноз"
     ],
     "urgent": false,
-    "draft": true,
+    "draft": false,
     "urgency": "emergency"
   },
   "эпилепсия": {
@@ -1947,7 +1947,7 @@
       "очная консультация врача: подтвердить или снять диагноз"
     ],
     "urgent": false,
-    "draft": true,
+    "draft": false,
     "urgency": "emergency"
   },
   "сепсис": {
@@ -1956,7 +1956,7 @@
       "очная консультация врача: подтвердить или снять диагноз"
     ],
     "urgent": false,
-    "draft": true,
+    "draft": false,
     "urgency": "emergency"
   },
   "гипогликемия": {
@@ -1965,7 +1965,7 @@
       "очная консультация врача: подтвердить или снять диагноз"
     ],
     "urgent": false,
-    "draft": true,
+    "draft": false,
     "urgency": "doctor_visit"
   },
   "кишечная непроходимость": {
@@ -1974,7 +1974,7 @@
       "очная консультация врача: подтвердить или снять диагноз"
     ],
     "urgent": false,
-    "draft": true,
+    "draft": false,
     "urgency": "emergency"
   }
 }
