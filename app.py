@@ -1,9 +1,7 @@
 import streamlit as st
 import json
 import os
-import numpy as np
-from sentence_transformers import SentenceTransformer
-from sklearn.metrics.pairwise import cosine_similarity
+import re
 
 # --- ПУТИ ---
 PROJECT_PATH = os.path.dirname(os.path.abspath(__file__))
@@ -11,36 +9,40 @@ KB_PATH = os.path.join(PROJECT_PATH, 'knowledge.json')
 LOG_PATH = os.path.join(PROJECT_PATH, 'unknown_queries.txt')
 
 # --- ЗАГРУЗКА ---
-@st.cache_resource
-def load_resources():
-    global kb, encoder, CLASS_NAMES, CLASS_EMBEDDINGS
+@st.cache_data
+def load_kb():
     try:
         with open(KB_PATH, 'r', encoding='utf-8-sig') as f:
-            kb = json.load(f)
-        
-        encoder = SentenceTransformer('intfloat/multilingual-e5-small')
-        CLASS_NAMES = list(kb.keys())
-        CLASS_EMBEDDINGS = encoder.encode(CLASS_NAMES, show_progress_bar=False, normalize_embeddings=True)
-        
-        return kb, encoder, CLASS_NAMES, CLASS_EMBEDDINGS
+            return json.load(f)
     except Exception as e:
-        st.error(f"Ошибка загрузки: {e}")
-        st.stop()
+        st.error(f"Ошибка: {e}")
+        return {}
 
-kb, encoder, CLASS_NAMES, CLASS_EMBEDDINGS = load_resources()
+kb = load_kb()
 
-# --- ЛОГИРОВАНИЕ (Wave 8) ---
-def log_unknown_query(query: str):
-    if not query.strip(): return
-    user_emb = encoder.encode([query])[0]
-    sims = cosine_similarity([user_emb], CLASS_EMBEDDINGS)[0]
-    if np.max(sims) < 0.65:
+# --- ФУНКЦИЯ ЛОГИРОВАНИЯ (Wave 8) ---
+def log_unknown(query: str):
+    if not query.strip(): return False
+    
+    # Проверяем, есть ли в базе похожие слова
+    query_words = query.lower().split()
+    found = False
+    for key in kb.keys():
+        key_words = key.lower().replace('_', ' ').split()
+        # Если есть хотя бы одно общее слово
+        if any(word in key_words for word in query_words):
+            found = True
+            break
+            
+    if not found:
         try:
             os.makedirs(os.path.dirname(LOG_PATH), exist_ok=True)
-            with open(LOG_PATH, 'a', encoding='utf-8') as f:
-                f.write(f"{query}\n")
+            with open(LOG_PATH, 'a', encoding='utf-8') as log_file:
+                log_file.write(f"{query}\n")
+            return True
         except Exception as e:
             print(f"Log error: {e}")
+    return False
 
 # --- ИНТЕРФЕЙС ---
 st.title("🩺 MedBot Duo")
@@ -55,42 +57,60 @@ with tab1:
     if st.button("Определить диагноз"):
         if user_input.strip():
             with st.spinner("Анализ..."):
-                user_emb = encoder.encode([user_input])[0]
-                sims = cosine_similarity([user_emb], CLASS_EMBEDDINGS)[0]
                 
-                best_idx = np.argmax(sims)
-                best_score = sims[best_idx]
-                found_class_id = CLASS_NAMES[best_idx]
+                # --- ПРОСТОЙ ПОИСК (ТОП-3) ---
+                query_lower = user_input.lower()
+                results = []
+                
+                for class_id, data in kb.items():
+                    # Собираем текст для поиска: ID + Описание
+                    search_text = (class_id + " " + data.get('desc', '')).lower()
+                    
+                    # Считаем количество общих слов
+                    score = sum(1 for word in query_lower.split() if word in search_text)
+                    
+                    if score > 0:
+                        results.append({
+                            "id": class_id,
+                            "score": score,
+                            "data": data
+                        })
+                
+                # Сортируем по количеству совпадений
+                results.sort(key=lambda x: x['score'], reverse=True)
+                TOP_3 = results[:3]
 
-                # Логируем (Wave 8)
+                # ЛОГИРУЕМ (Wave 8)
                 log_unknown_query(user_input)
 
-                # --- ИСПРАВЛЕННЫЙ БЛОК ВЫВОДА ---
-                if best_score > 0.65:
-                    data = kb[found_class_id]
+                # --- ВЫВОД ТОП-3 ---
+                if TOP_3:
+                    st.markdown("### ⚕️ Возможные диагнозы")
                     
-                    # 1. Выводим диагноз (даже если это черновик, чтобы видеть, что найдено)
-                    diagnosis_text = data.get('desc', f"Диагноз: {found_class_id.replace('_', ' ').title()}")
-                    
-                    st.markdown("### ⚕️ Результаты анализа")
-                    st.markdown(f"**Диагноз:** {diagnosis_text}")
-                    st.write(f"**Уверенность:** {best_score:.2%}")
-
-                    # 2. КРАСНЫЙ ФЛАГ (Urgent)
-                    if data.get('urgent', False):
-                        st.error("⛔ **ОСТОРОЖНО: ЭКСТРЕННЫЙ СЛУЧАЙ!**")
-                        st.markdown("**Немедленно вызовите скорую помощь (103 или 112).**")
-
-                    # 3. СОВЕТЫ (исправлено на data.get('confirm'))
-                    if data.get('confirm'):
-                        st.markdown("**Что нужно сделать:**")
-                        for act in data['confirm']:
-                            st.write(f"• {act}")
-                
+                    for item in TOP_3:
+                        data = item['data']
+                        class_id = item['id']
+                        
+                        # Готовим текст
+                        diagnosis_text = data.get('desc', class_id.replace('_', ' ').title())
+                        is_urgent = data.get('urgent', False)
+                        
+                        # Выводим блок
+                        st.markdown(f"**{diagnosis_text}** (Совпадений: {item['score']})")
+                        
+                        if data.get('confirm'):
+                            st.write("**Что нужно сделать:**")
+                            for act in data['confirm']:
+                                st.write(f"• {act}")
+                        
+                        if is_urgent:
+                            st.error("⛔ **ТРЕБУЕТСЯ СРОЧНАЯ ПОМОЩЬ!**")
+                        
+                        st.write("---")
                 else:
-                    st.info("ℹ️ Уверенности недостаточно для диагноза.")
+                    st.info("ℹ️ Уверенного ответа нет.")
                     if log_unknown_query(user_input):
-                        st.success("✅ Запрос сохранен в аналитику (Wave 8).")
+                        st.success("✅ Запрос сохранен в аналитику.")
 
 with tab2:
     st.header("🧪 Анализы")
@@ -103,7 +123,7 @@ with tab3:
             with open(LOG_PATH, 'r', encoding='utf-8') as f:
                 logs = f.readlines()
             if logs:
-                st.write(f"📊 Собрано неизвестных запросов: {len(logs)}")
+                st.write(f"📊 Неизвестных запросов: {len(logs)}")
                 st.text_area("Логи:", value="".join(logs[-100:]), height=300)
                 if st.button("🗑 Очистить лог"):
                     open(LOG_PATH, 'w').close()
