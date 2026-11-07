@@ -2,13 +2,14 @@ import streamlit as st
 import json
 import os
 import re
+from datetime import datetime
 
 # --- ПУТИ ---
 PROJECT_PATH = os.path.dirname(os.path.abspath(__file__))
 KB_PATH = os.path.join(PROJECT_PATH, 'knowledge.json')
 LOG_PATH = os.path.join(PROJECT_PATH, 'unknown_queries.txt')
 
-# --- ЗАГРУЗКА ---
+# --- ЗАГРУЗКА БАЗЫ ---
 @st.cache_data
 def load_kb():
     try:
@@ -21,24 +22,23 @@ def load_kb():
 kb = load_kb()
 
 # --- ФУНКЦИЯ ЛОГИРОВАНИЯ (Wave 8) ---
-def log_unknown(query: str):
-    if not query.strip(): return False
+# --- МЫ ПЕРЕНЕСЛИ ЕЁ НАВЕРХ ---
+def log_unknown_query(query: str):
+    if not query.strip():
+        return False
     
-    # Проверяем, есть ли в базе похожие слова
-    query_words = query.lower().split()
+    query_lower = query.lower()
     found = False
     for key in kb.keys():
-        key_words = key.lower().replace('_', ' ').split()
-        # Если есть хотя бы одно общее слово
-        if any(word in key_words for word in query_words):
+        if query_lower.replace(' ', '_') in key.lower():
             found = True
             break
             
     if not found:
         try:
             os.makedirs(os.path.dirname(LOG_PATH), exist_ok=True)
-            with open(LOG_PATH, 'a', encoding='utf-8') as log_file:
-                log_file.write(f"{query}\n")
+            with open(LOG_PATH, 'a', encoding='utf-8') as f:
+                f.write(f"[{datetime.now().strftime('%Y-%m-%d %H:%M:%S')}] {query}\n")
             return True
         except Exception as e:
             print(f"Log error: {e}")
@@ -58,15 +58,12 @@ with tab1:
         if user_input.strip():
             with st.spinner("Анализ..."):
                 
-                # --- ПРОСТОЙ ПОИСК (ТОП-3) ---
+                # ПРОСТОЙ ПОИСК (ТОП-3)
                 query_lower = user_input.lower()
                 results = []
                 
                 for class_id, data in kb.items():
-                    # Собираем текст для поиска: ID + Описание
                     search_text = (class_id + " " + data.get('desc', '')).lower()
-                    
-                    # Считаем количество общих слов
                     score = sum(1 for word in query_lower.split() if word in search_text)
                     
                     if score > 0:
@@ -76,11 +73,10 @@ with tab1:
                             "data": data
                         })
                 
-                # Сортируем по количеству совпадений
                 results.sort(key=lambda x: x['score'], reverse=True)
                 TOP_3 = results[:3]
 
-                # ЛОГИРУЕМ (Wave 8)
+                # ВЫЗОВ ЛОГИРОВАНИЯ (ТЕПЕРЬ ОН ПОСЛЕ ОБЪЯВЛЕНИЯ ФУНКЦИИ)
                 log_unknown_query(user_input)
 
                 # --- ВЫВОД ТОП-3 ---
@@ -89,17 +85,13 @@ with tab1:
                     
                     for item in TOP_3:
                         data = item['data']
-                        class_id = item['id']
-                        
-                        # Готовим текст
-                        diagnosis_text = data.get('desc', class_id.replace('_', ' ').title())
+                        diagnosis_text = data.get('desc', item['id'].replace('_', ' ').title())
                         is_urgent = data.get('urgent', False)
                         
-                        # Выводим блок
                         st.markdown(f"**{diagnosis_text}** (Совпадений: {item['score']})")
                         
                         if data.get('confirm'):
-                            st.write("**Что нужно сделать:**")
+                            st.markdown("**Что нужно сделать:**")
                             for act in data['confirm']:
                                 st.write(f"• {act}")
                         
@@ -109,8 +101,9 @@ with tab1:
                         st.write("---")
                 else:
                     st.info("ℹ️ Уверенного ответа нет.")
+                    # Это сообщение появится, только если поиск не дал результатов
                     if log_unknown_query(user_input):
-                        st.success("✅ Запрос сохранен в аналитику.")
+                        st.success("✅ Запрос сохранен в аналитику (Wave 8).")
 
 with tab2:
     st.header("🧪 Анализы")
@@ -123,7 +116,7 @@ with tab3:
             with open(LOG_PATH, 'r', encoding='utf-8') as f:
                 logs = f.readlines()
             if logs:
-                st.write(f"📊 Неизвестных запросов: {len(logs)}")
+                st.write(f"📊 Собрано неизвестных запросов: {len(logs)}")
                 st.text_area("Логи:", value="".join(logs[-100:]), height=300)
                 if st.button("🗑 Очистить лог"):
                     open(LOG_PATH, 'w').close()
