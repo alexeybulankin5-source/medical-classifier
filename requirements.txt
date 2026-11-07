@@ -5,3 +5,4 @@ tokenizers
 joblib
 scikit-learn
 pandas
+sentence-transformers
