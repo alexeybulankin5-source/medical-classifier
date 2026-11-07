@@ -3,42 +3,64 @@ import json
 import os
 import joblib
 import numpy as np
-from sentence_transformers import SentenceTransformer  # <-- ЭТОЙ СТРОКИ НЕ ХВАТАЛО
+from sentence_transformers import SentenceTransformer
 from sklearn.metrics.pairwise import cosine_similarity
 
-# --- ПУТИ ---
+# --- 1. НАСТРОЙКИ ПУТЕЙ ---
 PROJECT_PATH = os.path.dirname(os.path.abspath(__file__))
 KB_PATH = os.path.join(PROJECT_PATH, 'knowledge.json')
-EMB_PATH = os.path.join(PROJECT_PATH, 'emb_all.npz')
 PIPELINE_PATH = os.path.join(PROJECT_PATH, 'pipeline.joblib')
 LOG_PATH = os.path.join(PROJECT_PATH, 'unknown_queries.txt')
 
-# --- ЗАГРУЗКА МОДЕЛИ И БАЗЫ ---
+# --- 2. ГЛОБАЛЬНЫЕ ПЕРЕМЕННЫЕ (чтобы не грузить каждый раз) ---
+kb = {}
+encoder = None
+CLASS_NAMES = []
+CLASS_EMBEDDINGS = None
+
+# --- 3. ЗАГРУЗКА РЕСУРСОВ (База + Энкодер) ---
 @st.cache_resource
 def load_resources():
+    global kb, encoder, CLASS_NAMES, CLASS_EMBEDDINGS
+    
     try:
-        kb = json.load(open(KB_PATH, 'r', encoding='utf-8-sig'))
-        emb_matrix = np.load(EMB_PATH)['arr_0']
-        pipeline = joblib.load(PIPELINE_PATH)
+        # Загружаем базу знаний
+        with open(KB_PATH, 'r', encoding='utf-8-sig') as f:
+            kb = json.load(f)
+            
+        # Список всех ID классов (ключей словаря)
+        CLASS_NAMES = list(kb.keys())
+        
+        # Загружаем энкодер (саму нейросеть)
         encoder = SentenceTransformer('intfloat/multilingual-e5-small')
-        return kb, emb_matrix, pipeline, encoder
+        
+        # --- ГЛАВНОЕ ИЗМЕНЕНИЕ ---
+        # Мы НЕ читаем emb_all.npz. 
+        # Мы генерируем эмбеддинги для ВСЕХ 213 классов прямо сейчас.
+        print("Генерирую эмбеддинги для 213 классов...")
+        CLASS_EMBEDDINGS = encoder.encode(CLASS_NAMES, show_progress_bar=True)
+        
+        return kb, encoder, CLASS_NAMES, CLASS_EMBEDDINGS
+        
     except Exception as e:
         st.error(f"Ошибка загрузки ресурсов: {e}")
-        return None, None, None, None
+        st.stop()
 
-kb, emb_matrix, pipeline, encoder = load_resources()
+# Запускаем загрузку
+kb, encoder, CLASS_NAMES, CLASS_EMBEDDINGS = load_resources()
 
-if not kb:
-    st.stop()
-
-# --- ФУНКЦИЯ ЛОГИРОВАНИЯ (Wave 8) ---
+# --- 4. ФУНКЦИЯ ЛОГИРОВАНИЯ (Wave 8) ---
 def log_unknown_query(query: str):
     if not query.strip():
         return False
     
+    # Кодируем запрос пользователя
     user_emb = encoder.encode([query])[0]
-    sims = cosine_similarity([user_emb], emb_matrix)[0]
     
+    # Сравниваем с эмбеддингами всех 213 классов
+    sims = cosine_similarity([user_emb], CLASS_EMBEDDINGS)[0]
+    
+    # Если уверенность низкая (меньше 65%)
     if np.max(sims) < 0.65:
         try:
             os.makedirs(os.path.dirname(LOG_PATH), exist_ok=True)
@@ -49,7 +71,7 @@ def log_unknown_query(query: str):
             print(f"Log error: {e}")
     return False
 
-# --- ИНТЕРФЕЙС ---
+# --- 5. ИНТЕРФЕЙС ---
 st.title("🩺 MedBot Duo")
 st.markdown("Интеллектуальная система первичной диагностики")
 
@@ -63,24 +85,25 @@ with tab1:
         if user_input.strip():
             with st.spinner("Анализ..."):
                 
-                # УМНЫЙ ПОИСК (Wave 7b)
+                # Кодируем запрос пользователя
                 user_emb = encoder.encode([user_input])[0]
-                sims = cosine_similarity([user_emb], emb_matrix)[0]
                 
+                # Ищем наиболее похожий класс в нашей базе
+                sims = cosine_similarity([user_emb], CLASS_EMBEDDINGS)[0]
                 best_idx = np.argmax(sims)
                 best_score = sims[best_idx]
-                found_class_id = list(kb.keys())[best_idx]
+                found_class_id = CLASS_NAMES[best_idx]
 
-                # ЛОГИРОВАНИЕ (Wave 8)
+                # ЛОГИРУЕМ НЕИЗВЕСТНЫЕ ЗАПРОСЫ (Wave 8)
                 log_unknown_query(user_input)
 
-                # ОТОБРАЖЕНИЕ
-                if best_score > 0.65:
+                # ОТОБРАЖЕНИЕ РЕЗУЛЬТАТА
+                if best_score > 0.65: # Порог уверенности
                     data = kb[found_class_id]
                     if not data.get('draft', True) and data.get('desc'):
                         st.markdown("### ⚕️ Результаты анализа")
                         st.markdown(f"**Диагноз:** {data['desc']}")
-                        st.write(f"**Уверенность:** {best_score:.2%}")
+                        st.write(f"**Уверенность модели:** {best_score:.2%}")
                         
                         if data.get('confirm'):
                             st.markdown("**Что нужно сделать:**")
@@ -92,13 +115,13 @@ with tab1:
                     else:
                         st.info("Описание временно недоступно.")
                 else:
-                    st.info("ℹ️ Уверенного ответа нет (порог уверенности не пройден).")
+                    st.info("ℹ️ Уверенности модели недостаточно для вывода.")
         else:
-            st.warning("Введите текст.")
+            st.warning("Введите текст жалобы.")
 
 with tab2:
     st.header("🧪 Анализы")
-    st.info("Модуль в разработке.")
+    st.info("Модуль загрузки анализов в разработке.")
 
 with tab3:
     st.header("📊 Аналитика (Wave 8)")
@@ -108,13 +131,13 @@ with tab3:
                 logs = f.readlines()
             if logs:
                 st.write(f"📊 Собрано неизвестных запросов: {len(logs)}")
-                st.text_area("Логи:", value="".join(logs[-100:]), height=300)
-                if st.button("🗑 Очистить лог"):
+                st.text_area("Логи неизвестных запросов:", value="".join(logs[-100:]), height=300)
+                if st.button("🗑 Очистить лог-файл"):
                     open(LOG_PATH, 'w').close()
                     st.rerun()
             else:
                 st.info("Лог пуст.")
         except Exception as e:
-            st.error(f"Ошибка: {e}")
+            st.error(f"Ошибка чтения лога: {e}")
     else:
-        st.info("Лог будет создан после первого запроса.")
+        st.info("Лог будет создан после первого неизвестного запроса.")
