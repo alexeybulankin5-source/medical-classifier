@@ -3,7 +3,7 @@ import json
 import os
 import joblib
 import numpy as np
-from sentence_transformers import SentenceTransformer
+from sentence_transformers import SentenceTransformer  # <-- ЭТОЙ СТРОКИ НЕ ХВАТАЛО
 from sklearn.metrics.pairwise import cosine_similarity
 
 # --- ПУТИ ---
@@ -33,14 +33,13 @@ if not kb:
 
 # --- ФУНКЦИЯ ЛОГИРОВАНИЯ (Wave 8) ---
 def log_unknown_query(query: str):
-    if not query.strip(): return
+    if not query.strip():
+        return False
     
-    # Проверяем, нашла ли модель хоть что-то (порог 0.6)
     user_emb = encoder.encode([query])[0]
     sims = cosine_similarity([user_emb], emb_matrix)[0]
     
-    # Если лучшая уверенность ниже 60% - считаем, что это "неизвестное"
-    if np.max(sims) < 0.6:
+    if np.max(sims) < 0.65:
         try:
             os.makedirs(os.path.dirname(LOG_PATH), exist_ok=True)
             with open(LOG_PATH, 'a', encoding='utf-8') as f:
@@ -64,27 +63,24 @@ with tab1:
         if user_input.strip():
             with st.spinner("Анализ..."):
                 
-                # 1. Кодируем запрос пользователя
+                # УМНЫЙ ПОИСК (Wave 7b)
                 user_emb = encoder.encode([user_input])[0]
-                
-                # 2. Сравниваем с базой
                 sims = cosine_similarity([user_emb], emb_matrix)[0]
                 
-                # 3. Берем топ-1
                 best_idx = np.argmax(sims)
                 best_score = sims[best_idx]
                 found_class_id = list(kb.keys())[best_idx]
 
-                # 4. ЛОГИРУЕМ (Wave 8) - если модель не уверена
+                # ЛОГИРОВАНИЕ (Wave 8)
                 log_unknown_query(user_input)
 
-                # 5. ОТОБРАЖЕНИЕ
-                if best_score > 0.65: # Порог уверенности
+                # ОТОБРАЖЕНИЕ
+                if best_score > 0.65:
                     data = kb[found_class_id]
                     if not data.get('draft', True) and data.get('desc'):
                         st.markdown("### ⚕️ Результаты анализа")
                         st.markdown(f"**Диагноз:** {data['desc']}")
-                        st.write(f"**Уверенность модели:** {best_score:.2%}")
+                        st.write(f"**Уверенность:** {best_score:.2%}")
                         
                         if data.get('confirm'):
                             st.markdown("**Что нужно сделать:**")
@@ -96,8 +92,7 @@ with tab1:
                     else:
                         st.info("Описание временно недоступно.")
                 else:
-                    st.info("ℹ️ Уверенного ответа нет (уверенность модели низкая).")
-                    # Сообщение о записи в аналитику уже было выше
+                    st.info("ℹ️ Уверенного ответа нет (порог уверенности не пройден).")
         else:
             st.warning("Введите текст.")
 
