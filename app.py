@@ -1,66 +1,117 @@
-# -*- coding: utf-8 -*-
-import importlib.util, os, sys
 import streamlit as st
+import json
+import os
+from datetime import datetime
 
-_HERE = os.path.dirname(os.path.abspath(__file__))
-_spec = importlib.util.spec_from_file_location("medbot_live", os.path.join(_HERE, "medbot.py"))
-medbot = importlib.util.module_from_spec(_spec)
-sys.modules["medbot_live"] = medbot
-_spec.loader.exec_module(medbot)
+# --- Пути (работает и в GitHub, и в Colab) ---
+PROJECT_PATH = os.path.dirname(os.path.abspath(__file__))
+KB_PATH = os.path.join(PROJECT_PATH, 'knowledge.json')
+LOG_PATH = os.path.join(PROJECT_PATH, 'unknown_queries.txt')
 
-st.set_page_config(page_title="МедБот", page_icon="🩺")
-st.title("🩺 МедБот — первичная оценка жалоб")
-st.caption("Модель не ставит диагноз. При тревожных симптомах обратитесь к врачу.")
+# --- Загрузка базы ---
+@st.cache_data
+def load_kb():
+    try:
+        with open(KB_PATH, 'r', encoding='utf-8-sig') as f:
+            return json.load(f)
+    except Exception as e:
+        st.error(f"Ошибка: {e}")
+        return {}
 
-key = medbot.cache_key() if hasattr(medbot, "cache_key") else "fallback"
+kb = load_kb()
 
-st.sidebar.markdown(f"**build: {getattr(medbot, 'VERSION', 'СТАРЫЙ — версии нет!')}**")
-st.sidebar.caption("гибрид в medbot: " + ("да" if hasattr(medbot, "W_MODEL") else "НЕТ — старый код!"))
-st.sidebar.caption(f"модуль загружен из: {getattr(medbot, '__file__', '?')}")
-_diag = {}
-try:
-    import joblib, numpy as np
-    pd_ = joblib.load("pipeline.joblib")
-    _diag["model"] = type(pd_["colloquial"]["model"]).__name__
-    _diag["cardio"] = "да" if "стенокардия" in set(map(str, pd_["colloquial"]["classes"])) else "НЕТ"
-    _diag["rows"] = np.load("emb_all.npz")["X"].shape[0]
-except Exception as e:
-    _diag["model"] = "ошибка: " + str(e)[:60]
-# [скрыто от пациента] st.sidebar.caption(f"модель colloquial: {_diag.get('model', '?')}")
-st.sidebar.caption(f"стенокардия в классах: {_diag.get('cardio', '?')}")
-st.sidebar.caption(f"эталон: {_diag.get('rows', '?')} строк")
+# --- ФУНКЦИЯ ЛОГИРОВАНИЯ (Wave 8) ---
+def log_unknown_query(query: str):
+    if not query.strip():
+        return False
+    
+    # Проверяем, есть ли похожий класс в базе
+    query_lower = query.lower()
+    found = False
+    for key in kb.keys():
+        # Простая проверка: если слова из запроса есть в названии класса
+        if any(word in key.lower() for word in query_lower.split()):
+            found = True
+            break
 
-text = st.text_area("Опишите жалобы своими словами:", height=100)
+    # Если в базе такого нет - записываем
+    if not found:
+        try:
+            os.makedirs(os.path.dirname(LOG_PATH), exist_ok=True)
+            with open(LOG_PATH, 'a', encoding='utf-8') as f:
+                f.write(f"[{datetime.now().strftime('%Y-%m-%d %H:%M:%S')}] {query}\n")
+            return True
+        except Exception as e:
+            print(f"Log error: {e}")
+    return False
 
-if st.button("🩺 Поставить предварительный диагноз", type="primary", use_container_width=True):
-    if not text.strip():
-        st.warning("Опишите жалобы — хотя бы пару слов.")
-        st.stop()
-    flags = medbot.emergency_check(text)
-    if flags:
-        st.error("⚠️ Признаки, требующие срочной помощи:\n\n" +
-                 "\n".join(f"• {f}" for f in flags) +
-                 "\n\nЭто вне компетенции модели — звоните в скорую: **103** или **112**.")
-        st.warning("При экстренных признаках автоматический диагноз не выдаётся: "
-                   "оценка требует врача. До приезда скорой не оставляйте человека одного.")
-        st.stop()
-    r = medbot.predict(text)
-# [скрыто от пациента]     st.markdown(f"Ветка модели: **{r['branch']}** · маржа уверенности: **{r['margin']:.2f}**")
-    conf = r.get("confidence") or ("high" if r["confident"] else "low")
-    if conf == "high":
-        st.success(f"Предварительный диагноз: **{r['top'][0][0]}** ({r['top'][0][1]*100:.0f}%)")
-        from advice_ui import render_advice  # advice UI (wave5)
-        render_advice(r)
-    elif conf == "medium":
-        alts = ", ".join(c for c, _ in r["top"][1:3])
-        st.info(f"Предположительно **{r['top'][0][0]}** ({r['top'][0][1]*100:.0f}%). Похожие варианты: {alts} — если что-то из этого ближе к вашим жалобам, уточните формулировку.")
-        from advice_ui import render_advice  # advice UI medium
-        render_advice(r)
+# --- ИНТЕРФЕЙС ---
+st.title("🩺 MedBot Duo")
+st.markdown("Интеллектуальная система первичной диагностики")
+
+tab1, tab2, tab3 = st.tabs(["📝 Жалобы", "🧪 Анализы", "📊 Аналитика"])
+
+with tab1:
+    st.header("📝 Анализ жалоб")
+    user_input = st.text_area("Опишите жалобы:", height=150)
+    
+    if st.button("Определить диагноз"):
+        if user_input.strip():
+            with st.spinner("Анализ..."):
+                
+                # ВАША ЛОГИКА МОДЕЛИ (заглушка)
+                # Замените этот список на вывод вашей модели
+                TOP_3_IDS = ["артроз_коленного_сустава", "остеохондроз_поясничный", "плечелопаточный_периартрит"] 
+                
+                found_class_id = None
+                for pid in TOP_3_IDS:
+                    if pid in kb:
+                        found_class_id = pid
+                        break
+
+                # ЛОГИРУЕМ НЕИЗВЕСТНЫЕ ЗАПРОСЫ (Wave 8)
+                log_unknown_query(user_input)
+
+                # ОТОБРАЖЕНИЕ
+                if found_class_id:
+                    data = kb[found_class_id]
+                    if not data.get('draft', True) and data.get('desc'):
+                        st.markdown("### ⚕️ Результаты")
+                        st.markdown(f"**Диагноз:** {data['desc']}")
+                        if data.get('confirm'):
+                            st.markdown("**Что нужно сделать:**")
+                            for act in data['confirm']:
+                                st.write(f"• {act}")
+                        if data.get('urgent'):
+                            st.warning("⚠️ **Внимание:** Требуется врач!")
+                    else:
+                        st.info("Описание временно недоступно.")
+                else:
+                    st.info("ℹ️ Уверенного ответа нет.")
+                    # Уведомление пользователю
+                    if log_unknown_query(user_input):
+                        st.success("✅ Запрос записан в аналитику (Wave 8).")
+
+with tab2:
+    st.header("🧪 Анализы")
+    st.info("Модуль в разработке.")
+
+with tab3:
+    st.header("📊 Аналитика (Wave 8)")
+    if os.path.exists(LOG_PATH):
+        try:
+            with open(LOG_PATH, 'r', encoding='utf-8') as f:
+                logs = f.readlines()
+            if logs:
+                st.write(f"📊 Собрано неизвестных запросов: {len(logs)}")
+                st.text_area("Логи:", value="".join(logs[-100:]), height=300)
+                
+                if st.button("🗑 Очистить лог"):
+                    open(LOG_PATH, 'w').close()
+                    st.rerun()
+            else:
+                st.info("Лог пуст.")
+        except Exception as e:
+            st.error(f"Ошибка: {e}")
     else:
-        st.warning("Уверенного ответа нет — опишите главный симптом подробнее (где болит, когда началось, что усиливает), и поиск сузится.")
-    st.subheader("Топ-3 варианта")
-    for name, p in r["top"]:
-        st.markdown(f"- **{name}** — {p*100:.0f}%")
-    st.subheader("Похожие случаи из базы")
-    for name, sim in medbot.get_state(key)["similar"](text, k=3):
-        st.markdown(f"- {name} — сходство {sim*100:.0f}%")
+        st.info("Лог будет создан после первого запроса.")
