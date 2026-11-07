@@ -1,49 +1,56 @@
 import streamlit as st
 import json
 import os
-from datetime import datetime
+import joblib
+import numpy as np
+from sentence_transformers import SentenceTransformer
+from sklearn.metrics.pairwise import cosine_similarity
 
-# --- 1. ПУТИ ---
+# --- ПУТИ ---
 PROJECT_PATH = os.path.dirname(os.path.abspath(__file__))
 KB_PATH = os.path.join(PROJECT_PATH, 'knowledge.json')
+EMB_PATH = os.path.join(PROJECT_PATH, 'emb_all.npz')
+PIPELINE_PATH = os.path.join(PROJECT_PATH, 'pipeline.joblib')
 LOG_PATH = os.path.join(PROJECT_PATH, 'unknown_queries.txt')
 
-# --- 2. ЗАГРУЗКА БАЗЫ ---
-@st.cache_data
-def load_kb():
+# --- ЗАГРУЗКА МОДЕЛИ И БАЗЫ ---
+@st.cache_resource
+def load_resources():
     try:
-        with open(KB_PATH, 'r', encoding='utf-8-sig') as f:
-            return json.load(f)
+        kb = json.load(open(KB_PATH, 'r', encoding='utf-8-sig'))
+        emb_matrix = np.load(EMB_PATH)['arr_0']
+        pipeline = joblib.load(PIPELINE_PATH)
+        encoder = SentenceTransformer('intfloat/multilingual-e5-small')
+        return kb, emb_matrix, pipeline, encoder
     except Exception as e:
-        st.error(f"Ошибка: {e}")
-        return {}
+        st.error(f"Ошибка загрузки ресурсов: {e}")
+        return None, None, None, None
 
-kb = load_kb()
+kb, emb_matrix, pipeline, encoder = load_resources()
 
-# --- 3. ФУНКЦИЯ ЛОГИРОВАНИЯ (Wave 8) ---
+if not kb:
+    st.stop()
+
+# --- ФУНКЦИЯ ЛОГИРОВАНИЯ (Wave 8) ---
 def log_unknown_query(query: str):
-    if not query.strip():
-        return False
+    if not query.strip(): return
     
-    # Проверяем по словам (на случай если эмбеддинги не загрузились)
-    query_lower = query.lower()
-    found = False
-    for key in kb.keys():
-        if query_lower.replace(' ', '_') in key.lower() or key.lower() in query_lower:
-            found = True
-            break
-            
-    if not found:
+    # Проверяем, нашла ли модель хоть что-то (порог 0.6)
+    user_emb = encoder.encode([query])[0]
+    sims = cosine_similarity([user_emb], emb_matrix)[0]
+    
+    # Если лучшая уверенность ниже 60% - считаем, что это "неизвестное"
+    if np.max(sims) < 0.6:
         try:
             os.makedirs(os.path.dirname(LOG_PATH), exist_ok=True)
             with open(LOG_PATH, 'a', encoding='utf-8') as f:
-                f.write(f"[{datetime.now().strftime('%Y-%m-%d %H:%M:%S')}] {query}\n")
+                f.write(f"{query}\n")
             return True
         except Exception as e:
             print(f"Log error: {e}")
     return False
 
-# --- 4. ИНТЕРФЕЙС ---
+# --- ИНТЕРФЕЙС ---
 st.title("🩺 MedBot Duo")
 st.markdown("Интеллектуальная система первичной диагностики")
 
@@ -52,60 +59,45 @@ tab1, tab2, tab3 = st.tabs(["📝 Жалобы", "🧪 Анализы", "📊 А
 with tab1:
     st.header("📝 Анализ жалоб")
     user_input = st.text_area("Опишите жалобы:", height=150)
-
+    
     if st.button("Определить диагноз"):
         if user_input.strip():
             with st.spinner("Анализ..."):
                 
-                # --- УМНЫЙ ПОИСК (Wave 7b) ---
-                found_class_id = None
-                max_sim = 0.0
+                # 1. Кодируем запрос пользователя
+                user_emb = encoder.encode([user_input])[0]
                 
-                # ВАЖНО: Загрузите ваш энкодер (e5_onnx) здесь
-                # from sentence_transformers import SentenceTransformer
-                # encoder = SentenceTransformer('intfloat/multilingual-e5-small')
+                # 2. Сравниваем с базой
+                sims = cosine_similarity([user_emb], emb_matrix)[0]
                 
-                # user_emb = encoder.encode([user_input])[0]
-                # sims = cosine_similarity([user_emb], CLASS_EMBEDDINGS)[0]
-                # best_idx = np.argmax(sims)
-                
-                # if sims[best_idx] > 0.65: # Порог
-                #     found_class_id = CLASS_NAMES[best_idx]
-                
-                # --- ЗАГЛУШКА (пока нет векторов) ---
-                # Ищем просто по словам (надежно, но менее точно)
-                query_words = set(user_input.lower().split())
-                for key in kb.keys():
-                    key_words = set(key.lower().replace('_', ' ').split())
-                    common = len(query_words & key_words)
-                    total = len(query_words | key_words)
-                    sim = common / total if total > 0 else 0
-                    if sim > max_sim and sim > 0.4: # Порог 40%
-                        max_sim = sim
-                        found_class_id = key
-                # --- КОНЕЦ ЗАГЛУШКИ ---
+                # 3. Берем топ-1
+                best_idx = np.argmax(sims)
+                best_score = sims[best_idx]
+                found_class_id = list(kb.keys())[best_idx]
 
-                # ЛОГИРУЕМ (Wave 8)
+                # 4. ЛОГИРУЕМ (Wave 8) - если модель не уверена
                 log_unknown_query(user_input)
 
-                # ОТОБРАЖЕНИЕ
-                if found_class_id:
+                # 5. ОТОБРАЖЕНИЕ
+                if best_score > 0.65: # Порог уверенности
                     data = kb[found_class_id]
                     if not data.get('draft', True) and data.get('desc'):
-                        st.markdown("### ⚕️ Результаты")
+                        st.markdown("### ⚕️ Результаты анализа")
                         st.markdown(f"**Диагноз:** {data['desc']}")
+                        st.write(f"**Уверенность модели:** {best_score:.2%}")
+                        
                         if data.get('confirm'):
                             st.markdown("**Что нужно сделать:**")
                             for act in data['confirm']:
                                 st.write(f"• {act}")
+                        
                         if data.get('urgent'):
-                            st.warning("⚠️ **Внимание:** Требуется врач!")
+                            st.error("⛔ **ТРЕБУЕТСЯ СРОЧНАЯ ПОМОЩЬ!**")
                     else:
                         st.info("Описание временно недоступно.")
                 else:
-                    st.info("ℹ️ Уверенного ответа нет.")
-                    if log_unknown_query(user_input):
-                        st.success("✅ Запрос записан в аналитику (Wave 8).")
+                    st.info("ℹ️ Уверенного ответа нет (уверенность модели низкая).")
+                    # Сообщение о записи в аналитику уже было выше
         else:
             st.warning("Введите текст.")
 
