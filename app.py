@@ -10,51 +10,37 @@ PROJECT_PATH = os.path.dirname(os.path.abspath(__file__))
 KB_PATH = os.path.join(PROJECT_PATH, 'knowledge.json')
 LOG_PATH = os.path.join(PROJECT_PATH, 'unknown_queries.txt')
 
-# --- ЗАГРУЗКА (Надежная) ---
+# --- ЗАГРУЗКА ---
 @st.cache_resource
 def load_resources():
     global kb, encoder, CLASS_NAMES, CLASS_EMBEDDINGS
-    
-    # 1. База
     try:
         with open(KB_PATH, 'r', encoding='utf-8-sig') as f:
             kb = json.load(f)
-    except Exception as e:
-        st.error(f"❌ Ошибка загрузки knowledge.json: {e}")
-        st.stop()
-
-    # 2. Энкодер (модель для понимания смысла)
-    try:
+        
         encoder = SentenceTransformer('intfloat/multilingual-e5-small')
+        CLASS_NAMES = list(kb.keys())
+        CLASS_EMBEDDINGS = encoder.encode(CLASS_NAMES, show_progress_bar=False, normalize_embeddings=True)
+        
+        return kb, encoder, CLASS_NAMES, CLASS_EMBEDDINGS
     except Exception as e:
-        st.error(f"❌ Ошибка загрузки модели. Проверьте requirements.txt. Ошибка: {e}")
+        st.error(f"Ошибка загрузки: {e}")
         st.stop()
-
-    # 3. Генерация векторов для ВСЕХ 213 диагнозов (делается один раз при старте)
-    CLASS_NAMES = list(kb.keys())
-    CLASS_EMBEDDINGS = encoder.encode(CLASS_NAMES, show_progress_bar=False, normalize_embeddings=True)
-    
-    return kb, encoder, CLASS_NAMES, CLASS_EMBEDDINGS
 
 kb, encoder, CLASS_NAMES, CLASS_EMBEDDINGS = load_resources()
 
-# --- ФУНКЦИЯ ЛОГИРОВАНИЯ (Wave 8) ---
+# --- ЛОГИРОВАНИЕ (Wave 8) ---
 def log_unknown_query(query: str):
     if not query.strip(): return
-    
     user_emb = encoder.encode([query])[0]
     sims = cosine_similarity([user_emb], CLASS_EMBEDDINGS)[0]
-    
-    # Если модель вообще не уверена (ни один класс не похож)
     if np.max(sims) < 0.65:
         try:
             os.makedirs(os.path.dirname(LOG_PATH), exist_ok=True)
             with open(LOG_PATH, 'a', encoding='utf-8') as f:
                 f.write(f"{query}\n")
-            return True
         except Exception as e:
             print(f"Log error: {e}")
-    return False
 
 # --- ИНТЕРФЕЙС ---
 st.title("🩺 MedBot Duo")
@@ -69,44 +55,42 @@ with tab1:
     if st.button("Определить диагноз"):
         if user_input.strip():
             with st.spinner("Анализ..."):
-                
-                # Кодируем запрос пользователя
                 user_emb = encoder.encode([user_input])[0]
-                
-                # Сравниваем с базой
                 sims = cosine_similarity([user_emb], CLASS_EMBEDDINGS)[0]
                 
                 best_idx = np.argmax(sims)
                 best_score = sims[best_idx]
                 found_class_id = CLASS_NAMES[best_idx]
 
-                # ЛОГИРУЕМ (Wave 8)
+                # Логируем (Wave 8)
                 log_unknown_query(user_input)
 
-                # ОТОБРАЖЕНИЕ
-                if best_score > 0.65: # Порог уверенности
+                # --- ИСПРАВЛЕННЫЙ БЛОК ВЫВОДА ---
+                if best_score > 0.65:
                     data = kb[found_class_id]
                     
-                    # Проверка на черновик (Wave 7b fix)
-                    if not data.get('draft', True) and data.get('desc'):
-                        st.markdown("### ⚕️ Результаты анализа")
-                        st.markdown(f"**Диагноз:** {data['desc']}")
-                        st.write(f"**Уверенность:** {best_score:.2%}")
-                        
-                        if data.get('confirm'):
-                            st.markdown("**Что нужно сделать:**")
-                            for act in data['confirm']:
-                                st.write(f"• {act}")
-                        
-                        if data.get('urgent'):
-                            st.error("⛔ **ТРЕБУЕТСЯ СРОЧНАЯ ПОМОЩЬ!**")
-                            st.markdown("**Немедленно вызовите скорую помощь (103 или 112).**")
-                    else:
-                        st.info("Описание временно недоступно.")
+                    # 1. Выводим диагноз (даже если это черновик, чтобы видеть, что найдено)
+                    diagnosis_text = data.get('desc', f"Диагноз: {found_class_id.replace('_', ' ').title()}")
+                    
+                    st.markdown("### ⚕️ Результаты анализа")
+                    st.markdown(f"**Диагноз:** {diagnosis_text}")
+                    st.write(f"**Уверенность:** {best_score:.2%}")
+
+                    # 2. КРАСНЫЙ ФЛАГ (Urgent)
+                    if data.get('urgent', False):
+                        st.error("⛔ **ОСТОРОЖНО: ЭКСТРЕННЫЙ СЛУЧАЙ!**")
+                        st.markdown("**Немедленно вызовите скорую помощь (103 или 112).**")
+
+                    # 3. СОВЕТЫ (исправлено на data.get('confirm'))
+                    if data.get('confirm'):
+                        st.markdown("**Что нужно сделать:**")
+                        for act in data['confirm']:
+                            st.write(f"• {act}")
+                
                 else:
-                    st.info("ℹ️ Уверенности модели недостаточно для вывода диагноза.")
-        else:
-            st.warning("Введите текст жалобы.")
+                    st.info("ℹ️ Уверенности недостаточно для диагноза.")
+                    if log_unknown_query(user_input):
+                        st.success("✅ Запрос сохранен в аналитику (Wave 8).")
 
 with tab2:
     st.header("🧪 Анализы")
