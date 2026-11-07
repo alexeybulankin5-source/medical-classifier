@@ -3,12 +3,12 @@ import json
 import os
 from datetime import datetime
 
-# --- Пути (работает и в GitHub, и в Colab) ---
+# --- 1. ПУТИ ---
 PROJECT_PATH = os.path.dirname(os.path.abspath(__file__))
 KB_PATH = os.path.join(PROJECT_PATH, 'knowledge.json')
 LOG_PATH = os.path.join(PROJECT_PATH, 'unknown_queries.txt')
 
-# --- Загрузка базы ---
+# --- 2. ЗАГРУЗКА БАЗЫ ---
 @st.cache_data
 def load_kb():
     try:
@@ -20,21 +20,19 @@ def load_kb():
 
 kb = load_kb()
 
-# --- ФУНКЦИЯ ЛОГИРОВАНИЯ (Wave 8) ---
+# --- 3. ФУНКЦИЯ ЛОГИРОВАНИЯ (Wave 8) ---
 def log_unknown_query(query: str):
     if not query.strip():
         return False
     
-    # Проверяем, есть ли похожий класс в базе
+    # Проверяем по словам (на случай если эмбеддинги не загрузились)
     query_lower = query.lower()
     found = False
     for key in kb.keys():
-        # Простая проверка: если слова из запроса есть в названии класса
-        if any(word in key.lower() for word in query_lower.split()):
+        if query_lower.replace(' ', '_') in key.lower() or key.lower() in query_lower:
             found = True
             break
-
-    # Если в базе такого нет - записываем
+            
     if not found:
         try:
             os.makedirs(os.path.dirname(LOG_PATH), exist_ok=True)
@@ -45,7 +43,7 @@ def log_unknown_query(query: str):
             print(f"Log error: {e}")
     return False
 
-# --- ИНТЕРФЕЙС ---
+# --- 4. ИНТЕРФЕЙС ---
 st.title("🩺 MedBot Duo")
 st.markdown("Интеллектуальная система первичной диагностики")
 
@@ -54,22 +52,40 @@ tab1, tab2, tab3 = st.tabs(["📝 Жалобы", "🧪 Анализы", "📊 А
 with tab1:
     st.header("📝 Анализ жалоб")
     user_input = st.text_area("Опишите жалобы:", height=150)
-    
+
     if st.button("Определить диагноз"):
         if user_input.strip():
             with st.spinner("Анализ..."):
                 
-                # ВАША ЛОГИКА МОДЕЛИ (заглушка)
-                # Замените этот список на вывод вашей модели
-                TOP_3_IDS = ["артроз_коленного_сустава", "остеохондроз_поясничный", "плечелопаточный_периартрит"] 
-                
+                # --- УМНЫЙ ПОИСК (Wave 7b) ---
                 found_class_id = None
-                for pid in TOP_3_IDS:
-                    if pid in kb:
-                        found_class_id = pid
-                        break
+                max_sim = 0.0
+                
+                # ВАЖНО: Загрузите ваш энкодер (e5_onnx) здесь
+                # from sentence_transformers import SentenceTransformer
+                # encoder = SentenceTransformer('intfloat/multilingual-e5-small')
+                
+                # user_emb = encoder.encode([user_input])[0]
+                # sims = cosine_similarity([user_emb], CLASS_EMBEDDINGS)[0]
+                # best_idx = np.argmax(sims)
+                
+                # if sims[best_idx] > 0.65: # Порог
+                #     found_class_id = CLASS_NAMES[best_idx]
+                
+                # --- ЗАГЛУШКА (пока нет векторов) ---
+                # Ищем просто по словам (надежно, но менее точно)
+                query_words = set(user_input.lower().split())
+                for key in kb.keys():
+                    key_words = set(key.lower().replace('_', ' ').split())
+                    common = len(query_words & key_words)
+                    total = len(query_words | key_words)
+                    sim = common / total if total > 0 else 0
+                    if sim > max_sim and sim > 0.4: # Порог 40%
+                        max_sim = sim
+                        found_class_id = key
+                # --- КОНЕЦ ЗАГЛУШКИ ---
 
-                # ЛОГИРУЕМ НЕИЗВЕСТНЫЕ ЗАПРОСЫ (Wave 8)
+                # ЛОГИРУЕМ (Wave 8)
                 log_unknown_query(user_input)
 
                 # ОТОБРАЖЕНИЕ
@@ -88,9 +104,10 @@ with tab1:
                         st.info("Описание временно недоступно.")
                 else:
                     st.info("ℹ️ Уверенного ответа нет.")
-                    # Уведомление пользователю
                     if log_unknown_query(user_input):
                         st.success("✅ Запрос записан в аналитику (Wave 8).")
+        else:
+            st.warning("Введите текст.")
 
 with tab2:
     st.header("🧪 Анализы")
@@ -105,7 +122,6 @@ with tab3:
             if logs:
                 st.write(f"📊 Собрано неизвестных запросов: {len(logs)}")
                 st.text_area("Логи:", value="".join(logs[-100:]), height=300)
-                
                 if st.button("🗑 Очистить лог"):
                     open(LOG_PATH, 'w').close()
                     st.rerun()
