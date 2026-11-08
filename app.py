@@ -2,41 +2,51 @@ import streamlit as st
 import json
 import os
 import numpy as np
-from datetime import datetime
+from sentence_transformers import SentenceTransformer
 
-# --- 1. АВТОПОИСК ФАЙЛА (вместо жесткого пути) ---
-def find_file(filename):
-    for root, dirs, files in os.walk('.'):
-        if filename in files:
-            return os.path.join(root, filename)
-    return None
+# --- ПУТИ ---
+PROJECT_PATH = os.path.dirname(os.path.abspath(__file__))
+KB_PATH = os.path.join(PROJECT_PATH, 'knowledge.json')
+LOG_PATH = os.path.join(PROJECT_PATH, 'unknown_queries.txt')
+EMB_PATH = os.path.join(PROJECT_PATH, 'class_embeddings.npz')
 
-KB_PATH = find_file('knowledge.json')
+# --- ЗАГРУЗКА ---
+@st.cache_resource
+def load_resources():
+    global kb, encoder, CLASS_NAMES, CLASS_EMBEDDINGS
+    
+    # 1. База
+    with open(KB_PATH, 'r', encoding='utf-8-sig') as f:
+        kb = json.load(f)
+        
+    # 2. Вектора (самое важное - грузим готовый файл)
+    if os.path.exists(EMB_PATH):
+        data = np.load(EMB_PATH)
+        CLASS_EMBEDDINGS = data['embeddings']
+        CLASS_NAMES = data['names'].tolist()
+    else:
+        st.error("❌ Файл class_embeddings.npz не найден. Запустите vectorizer.py")
+        st.stop()
+        
+    # 3. Энкодер для текста пользователя
+    encoder = SentenceTransformer('intfloat/multilingual-e5-small')
+    
+    return kb, encoder, CLASS_NAMES, CLASS_EMBEDDINGS
 
-if not KB_PATH:
-    st.error("❌ Файл knowledge.json не найден в репозитории. Проверьте его наличие.")
-    st.stop()
+kb, encoder, CLASS_NAMES, CLASS_EMBEDDINGS = load_resources()
 
-LOG_PATH = os.path.join(os.path.dirname(KB_PATH), 'unknown_queries.txt')
-
-# --- 2. ЗАГРУЗКА БАЗЫ ---
-@st.cache_data
-def load_kb():
-    try:
-        with open(KB_PATH, 'r', encoding='utf-8-sig') as f:
-            return json.load(f)
-    except Exception as e:
-        st.error(f"Ошибка чтения {KB_PATH}: {e}")
-        return {}
-
-kb = load_kb()
-
-# --- 3. ЛОГИРОВАНИЕ (Wave 8) ---
+# --- ЛОГИРОВАНИЕ (Wave 8) ---
 def log_unknown_query(query: str):
     if not query.strip(): return False
-    query_lower = query.lower().replace('ё', 'е')
-    found = any(query_lower.replace(' ', '_') in key.lower() for key in kb.keys())
-    if not found:
+    
+    # Кодируем запрос пользователя
+    user_emb = encoder.encode([query])[0]
+    
+    # Сравниваем с базой
+    sims = cosine_similarity([user_emb], CLASS_EMBEDDINGS)[0]
+    
+    # Если лучшая уверенность ниже 65% - считаем запрос "неизвестным"
+    if np.max(sims) < 0.65:
         try:
             os.makedirs(os.path.dirname(LOG_PATH), exist_ok=True)
             with open(LOG_PATH, 'a', encoding='utf-8') as f:
@@ -46,7 +56,7 @@ def log_unknown_query(query: str):
             print(f"Log error: {e}")
     return False
 
-# --- 4. ИНТЕРФЕЙС ---
+# --- ИНТЕРФЕЙС ---
 st.title("🩺 MedBot Duo")
 st.markdown("Интеллектуальная система первичной диагностики")
 
@@ -59,35 +69,31 @@ with tab1:
     if st.button("Определить диагноз"):
         if user_input.strip():
             with st.spinner("Анализ..."):
-                query_lower = user_input.lower().replace('ё', 'е')
-                results = []
+                # Кодируем запрос пользователя
+                user_emb = encoder.encode([user_input])[0]
                 
-                for class_id, data in kb.items():
-                    search_text = (class_id + " " + data.get('desc', '')).lower()
-                    score = sum(1 for word in query_lower.split() if word in search_text)
-                    if score > 0:
-                        results.append({"id": class_id, "score": score, "data": data})
+                # Сравниваем с базой векторов (ТОЧНЫЙ ПОИСК ПО СМЫСЛУ)
+                sims = cosine_similarity([user_emb], CLASS_EMBEDDINGS)[0]
                 
-                results.sort(key=lambda x: x['score'], reverse=True)
-                TOP_3 = results[:3]
+                best_idx = np.argmax(sims)
+                best_score = sims[best_idx]
+                found_class_id = CLASS_NAMES[best_idx]
 
+                # ЛОГИРУЕМ (Wave 8)
                 log_unknown_query(user_input)
 
-                if TOP_3:
-                    st.markdown("### ⚕️ Возможные диагнозы")
+                # --- ВЫВОД (Исправлено: выводим только если нашли по смыслу) ---
+                if best_score > 0.65: # Порог уверенности
+                    data = kb[found_class_id]
                     
-                    for item in TOP_3:
-                        data = item['data']
-                        class_id = item['id']
-                        
-                        # ИСПРАВЛЕНО: Теперь диагноз не исчезнет, если desc пустой
-                        diagnosis_text = data.get('desc')
-                        if not diagnosis_text:
-                            diagnosis_text = f"[Черновик] {class_id.replace('_', ' ').title()}"
-                        
+                    # Если это не черновик
+                    if not data.get('draft', True) and data.get('desc'):
+                        diagnosis_text = data['desc']
                         is_urgent = data.get('urgent', False)
                         
-                        st.markdown(f"**{diagnosis_text}** (Совпадений: {item['score']})")
+                        st.markdown("### ⚕️ Результаты анализа")
+                        st.markdown(f"**Диагноз:** {diagnosis_text}")
+                        st.write(f"**Уверенность:** {best_score:.2%}")
                         
                         if data.get('confirm'):
                             st.markdown("**Что нужно сделать:**")
@@ -97,10 +103,11 @@ with tab1:
                         if is_urgent:
                             st.error("⛔ **ВНИМАНИЕ: ЭКСТРЕННЫЙ СЛУЧАЙ!**")
                             st.markdown("**Немедленно вызовите скорую помощь (103 или 112).**")
-                        
-                        st.write("---")
+                    else:
+                        st.info("Описание временно недоступно.")
                 else:
-                    st.info("ℹ️ Уверенности недостаточно.")
+                    st.info("ℹ️ Уверенности недостаточно для постановки диагноза.")
+                    # Сообщаем, что записали в аналитику
                     if log_unknown_query(user_input):
                         st.success("✅ Запрос сохранен в аналитику (Wave 8).")
         else:
@@ -118,7 +125,7 @@ with tab3:
                 logs = f.readlines()
             if logs:
                 st.write(f"📊 Собрано неизвестных запросов: {len(logs)}")
-                st.text_area("Логи:", value="".join(logs[-100:]), height=300)
+                st.text_area("Логи неизвестных запросов:", value="".join(logs[-100:]), height=300)
                 if st.button("🗑 Очистить лог"):
                     open(LOG_PATH, 'w').close()
                     st.rerun()
