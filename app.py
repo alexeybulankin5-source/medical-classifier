@@ -4,24 +4,34 @@ import os
 import numpy as np
 from datetime import datetime
 
-# --- ПУТИ ---
-PROJECT_PATH = os.path.dirname(os.path.abspath(__file__))
-KB_PATH = os.path.join(PROJECT_PATH, 'knowledge.json')
-LOG_PATH = os.path.join(PROJECT_PATH, 'unknown_queries.txt')
+# --- 1. АВТОПОИСК ФАЙЛА (вместо жесткого пути) ---
+def find_file(filename):
+    for root, dirs, files in os.walk('.'):
+        if filename in files:
+            return os.path.join(root, filename)
+    return None
 
-# --- ЗАГРУЗКА ---
+KB_PATH = find_file('knowledge.json')
+
+if not KB_PATH:
+    st.error("❌ Файл knowledge.json не найден в репозитории. Проверьте его наличие.")
+    st.stop()
+
+LOG_PATH = os.path.join(os.path.dirname(KB_PATH), 'unknown_queries.txt')
+
+# --- 2. ЗАГРУЗКА БАЗЫ ---
 @st.cache_data
 def load_kb():
     try:
         with open(KB_PATH, 'r', encoding='utf-8-sig') as f:
             return json.load(f)
     except Exception as e:
-        st.error(f"Ошибка загрузки базы: {e}")
+        st.error(f"Ошибка чтения {KB_PATH}: {e}")
         return {}
 
 kb = load_kb()
 
-# --- ФУНКЦИЯ ЛОГИРОВАНИЯ (Wave 8) ---
+# --- 3. ЛОГИРОВАНИЕ (Wave 8) ---
 def log_unknown_query(query: str):
     if not query.strip(): return False
     query_lower = query.lower().replace('ё', 'е')
@@ -36,7 +46,7 @@ def log_unknown_query(query: str):
             print(f"Log error: {e}")
     return False
 
-# --- ИНТЕРФЕЙС ---
+# --- 4. ИНТЕРФЕЙС ---
 st.title("🩺 MedBot Duo")
 st.markdown("Интеллектуальная система первичной диагностики")
 
@@ -70,12 +80,10 @@ with tab1:
                         data = item['data']
                         class_id = item['id']
                         
-                        # --- ГЛАВНОЕ ИСПРАВЛЕНИЕ ---
-                        # Если desc пустой (черновик), мы НЕ выводим его как диагноз
-                        # Мы выводим заглушку, чтобы вы видели, что класс найден
+                        # ИСПРАВЛЕНО: Теперь диагноз не исчезнет, если desc пустой
                         diagnosis_text = data.get('desc')
                         if not diagnosis_text:
-                            diagnosis_text = f"[{class_id.replace('_', ' ').title()}] — Требует описания (Wave 7b)"
+                            diagnosis_text = f"[Черновик] {class_id.replace('_', ' ').title()}"
                         
                         is_urgent = data.get('urgent', False)
                         
