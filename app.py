@@ -5,7 +5,7 @@ import numpy as np
 from datetime import datetime
 
 # --- ПУТИ ---
-PROJECT_PATH = '/content/drive/My Drive/medical-classifier' # <-- ВАШ ПУТЬ К ДИСКУ
+PROJECT_PATH = os.path.dirname(os.path.abspath(__file__))
 KB_PATH = os.path.join(PROJECT_PATH, 'knowledge.json')
 LOG_PATH = os.path.join(PROJECT_PATH, 'unknown_queries.txt')
 
@@ -21,10 +21,10 @@ def load_kb():
 
 kb = load_kb()
 
-# --- ЛОГИРОВАНИЕ (Wave 8) ---
+# --- ФУНКЦИЯ ЛОГИРОВАНИЯ (Wave 8) ---
 def log_unknown_query(query: str):
     if not query.strip(): return False
-    query_lower = query.lower()
+    query_lower = query.lower().replace('ё', 'е')
     found = any(query_lower.replace(' ', '_') in key.lower() for key in kb.keys())
     if not found:
         try:
@@ -49,7 +49,7 @@ with tab1:
     if st.button("Определить диагноз"):
         if user_input.strip():
             with st.spinner("Анализ..."):
-                query_lower = user_input.lower()
+                query_lower = user_input.lower().replace('ё', 'е')
                 results = []
                 
                 for class_id, data in kb.items():
@@ -70,10 +70,12 @@ with tab1:
                         data = item['data']
                         class_id = item['id']
                         
-                        if data.get('desc') and not data.get('draft', True):
-                            diagnosis_text = data['desc']
-                        else:
-                            diagnosis_text = f"[Черновик] {class_id.replace('_', ' ').title()}"
+                        # --- ГЛАВНОЕ ИСПРАВЛЕНИЕ ---
+                        # Если desc пустой (черновик), мы НЕ выводим его как диагноз
+                        # Мы выводим заглушку, чтобы вы видели, что класс найден
+                        diagnosis_text = data.get('desc')
+                        if not diagnosis_text:
+                            diagnosis_text = f"[{class_id.replace('_', ' ').title()}] — Требует описания (Wave 7b)"
                         
                         is_urgent = data.get('urgent', False)
                         
@@ -90,9 +92,11 @@ with tab1:
                         
                         st.write("---")
                 else:
-                    st.info("Уверенности недостаточно.")
+                    st.info("ℹ️ Уверенности недостаточно.")
                     if log_unknown_query(user_input):
                         st.success("✅ Запрос сохранен в аналитику (Wave 8).")
+        else:
+            st.warning("Введите текст жалобы.")
 
 with tab2:
     st.header("🧪 Анализы")
@@ -105,7 +109,7 @@ with tab3:
             with open(LOG_PATH, 'r', encoding='utf-8') as f:
                 logs = f.readlines()
             if logs:
-                st.write(f"📊 Неизвестных запросов: {len(logs)}")
+                st.write(f"📊 Собрано неизвестных запросов: {len(logs)}")
                 st.text_area("Логи:", value="".join(logs[-100:]), height=300)
                 if st.button("🗑 Очистить лог"):
                     open(LOG_PATH, 'w').close()
