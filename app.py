@@ -1,11 +1,11 @@
 import streamlit as st
 import json
 import os
-import re
+import numpy as np
 from datetime import datetime
 
 # --- ПУТИ ---
-PROJECT_PATH = os.path.dirname(os.path.abspath(__file__))
+PROJECT_PATH = '/content/drive/My Drive/medical-classifier' # <-- ВАШ ПУТЬ К ДИСКУ
 KB_PATH = os.path.join(PROJECT_PATH, 'knowledge.json')
 LOG_PATH = os.path.join(PROJECT_PATH, 'unknown_queries.txt')
 
@@ -16,27 +16,25 @@ def load_kb():
         with open(KB_PATH, 'r', encoding='utf-8-sig') as f:
             return json.load(f)
     except Exception as e:
-        st.error(f"Ошибка: {e}")
+        st.error(f"Ошибка загрузки базы: {e}")
         return {}
 
 kb = load_kb()
 
 # --- ЛОГИРОВАНИЕ (Wave 8) ---
 def log_unknown_query(query: str):
-    if not query.strip(): return
+    if not query.strip(): return False
     query_lower = query.lower()
-    found = False
-    for key in kb.keys():
-        if query_lower.replace(' ', '_') in key.lower():
-            found = True
-            break
+    found = any(query_lower.replace(' ', '_') in key.lower() for key in kb.keys())
     if not found:
         try:
             os.makedirs(os.path.dirname(LOG_PATH), exist_ok=True)
             with open(LOG_PATH, 'a', encoding='utf-8') as f:
                 f.write(f"{query}\n")
+            return True
         except Exception as e:
             print(f"Log error: {e}")
+    return False
 
 # --- ИНТЕРФЕЙС ---
 st.title("🩺 MedBot Duo")
@@ -72,15 +70,10 @@ with tab1:
                         data = item['data']
                         class_id = item['id']
                         
-                        # --- ИСПРАВЛЕННЫЙ ВЫВОД ---
-                        # 1. Если есть нормальное описание - выводим его
                         if data.get('desc') and not data.get('draft', True):
                             diagnosis_text = data['desc']
-                        # 2. Если это черновик (desc пустой или draft:true) - НЕ выводим как диагноз
-                            # Просто пишем ID, чтобы мы видели, что найдено
-                            diagnosis_text = f"[Черновик] {class_id.replace('_', ' ').title()}"
                         else:
-                            diagnosis_text = f"[ID: {class_id}]"
+                            diagnosis_text = f"[Черновик] {class_id.replace('_', ' ').title()}"
                         
                         is_urgent = data.get('urgent', False)
                         
@@ -97,9 +90,9 @@ with tab1:
                         
                         st.write("---")
                 else:
-                    st.info("Уверенного ответа нет.")
+                    st.info("Уверенности недостаточно.")
                     if log_unknown_query(user_input):
-                        st.success("Запрос сохранен в аналитику (Wave 8).")
+                        st.success("✅ Запрос сохранен в аналитику (Wave 8).")
 
 with tab2:
     st.header("🧪 Анализы")
@@ -112,9 +105,9 @@ with tab3:
             with open(LOG_PATH, 'r', encoding='utf-8') as f:
                 logs = f.readlines()
             if logs:
-                st.write(f"Неизвестных запросов: {len(logs)}")
+                st.write(f"📊 Неизвестных запросов: {len(logs)}")
                 st.text_area("Логи:", value="".join(logs[-100:]), height=300)
-                if st.button("Очистить лог"):
+                if st.button("🗑 Очистить лог"):
                     open(LOG_PATH, 'w').close()
                     st.rerun()
             else:
