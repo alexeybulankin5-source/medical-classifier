@@ -94,5 +94,5 @@ with tab1:
                         data = kb[found_class_id]
                         
                         if not data.get('draft', True) and data.get('desc'):
-                            st.markdown("### ⚕️ Результаты анализа")
-                            st.markdown(f"**Диагноз:** {data
+                            diagnosis_text = data['desc']
+                            is_urgent = data.get('urgent', False)
