@@ -95,5 +95,4 @@ with tab1:
                         
                         if not data.get('draft', True) and data.get('desc'):
                             st.markdown("### ⚕️ Результаты анализа")
-                            st.markdown(f"**Диагноз:** {data['desc']}")
-                            st
+                            st.markdown(f"**Диагноз:** {data
