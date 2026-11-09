@@ -103,7 +103,7 @@ def log_unknown_query(query: str):
         return False
     
     try:
-        user_emb = encoder.encode([query])[0]
+        user_emb = encoder.encode(["query: " + query])[0]
         sims = cosine_similarity([user_emb], CLASS_EMBEDDINGS)[0]
         
         if np.max(sims) < 0.65:
@@ -135,7 +135,7 @@ with tab1:
             with st.spinner("Анализ..."):
                 try:
                     # Кодируем запрос
-                    user_emb = encoder.encode([user_input])[0]
+                    user_emb = encoder.encode(["query: " + user_input])[0]
                     sims = cosine_similarity([user_emb], CLASS_EMBEDDINGS)[0]
                     
                     best_idx = np.argmax(sims)
