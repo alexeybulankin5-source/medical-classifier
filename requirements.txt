@@ -1,5 +1,6 @@
-streamlit==1.30.0
-sentence-transformers==2.2.2
-numpy==1.24.3
-scikit-learn==1.2.2
-joblib==1.2.0
+streamlit
+sentence-transformers
+numpy
+scikit-learn
+joblib
+cosine-similarity
