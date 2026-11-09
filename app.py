@@ -3,7 +3,7 @@ import json
 import os
 import numpy as np
 from sentence_transformers import SentenceTransformer
-from sklearn.metrics.pairwise import cosine_similarity  # Добавлен новый импорт
+from sklearn.metrics.pairwise import cosine_similarity  # Добавляем импорт
 
 # --- ПУТИ ---
 PROJECT_PATH = os.path.dirname(os.path.abspath(__file__))
@@ -20,21 +20,18 @@ def load_resources():
         # 1. Загрузка базы знаний
         with open(KB_PATH, 'r', encoding='utf-8-sig') as f:
             kb = json.load(f)
-            st.write("База знаний успешно загружена")
             
         # 2. Загрузка векторов
         if os.path.exists(EMB_PATH):
             data = np.load(EMB_PATH)
             CLASS_EMBEDDINGS = data['embeddings']
             CLASS_NAMES = data['names'].tolist()
-            st.write(f"Embeddings загружены. Размер: {CLASS_EMBEDDINGS.shape}")
         else:
-            st.error("Файл class_embeddings.npz не найден")
-            raise FileNotFoundError
+            st.error("❌ Файл class_embeddings.npz не найден. Запустите vectorizer.py")
+            st.stop()
             
-        # 3. Инициализация энкодера
+        # 3. Энкодер для текста пользователя
         encoder = SentenceTransformer('intfloat/multilingual-e5-small')
-        st.write("Энкодер успешно инициализирован")
         
     except Exception as e:
         st.error(f"Ошибка при загрузке ресурсов: {str(e)}")
@@ -44,52 +41,35 @@ def load_resources():
 
 kb, encoder, CLASS_NAMES, CLASS_EMBEDDINGS = load_resources()
 
-# --- ОТЛАДОЧНЫЙ ВЫВОД ---
-try:
-    st.title("🩺 MedBot Duo")
-    st.markdown("Интеллектуальная система первичной диагностики")
-    
-    # Проверка файлов
-    st.write(f"knowledge.json существует: {os.path.exists(KB_PATH)}")
-    st.write(f"class_embeddings.npz существует: {os.path.exists(EMB_PATH)}")
-    
-    # Проверка прав доступа
-    if not os.access(KB_PATH, os.R_OK):
-        st.error("Нет прав на чтение knowledge.json")
-        
-    if not os.access(EMB_PATH, os.R_OK):
-        st.error("Нет прав на чтение class_embeddings.npz")
-
 # --- ЛОГИРОВАНИЕ (Wave 8) ---
 def log_unknown_query(query: str):
-    if not query.strip(): return False
+    if not query.strip(): 
+        return False
     
-    # Кодируем запрос пользователя
-    user_emb = encoder.encode([query])[0]
-    
-    # Сравниваем с базой
-    sims = cosine_similarity([user_emb], CLASS_EMBEDDINGS)[0]
-    
-    # Если лучшая уверенность ниже 65% - считаем запрос "неизвестным"
-    if np.max(sims) < 0.65:
-        try:
-            os.makedirs(os.path.dirname(LOG_PATH), exist_ok=True)
-            with open(LOG_PATH, 'a', encoding='utf-8') as f:
-                f.write(f"{query}\n")
-            return True
-        except Exception as e:
-            print(f"Log error: {e}")
+    try:
+        # Кодируем запрос пользователя
+        user_emb = encoder.encode([query])[0]
+        
+        # Сравниваем с базой
+        sims = cosine_similarity([user_emb], CLASS_EMBEDDINGS)[0]
+        
+        # Если лучшая уверенность ниже 65% - считаем запрос "неизвестным"
+        if np.max(sims) < 0.65:
+            try:
+                os.makedirs(os.path.dirname(LOG_PATH), exist_ok=True)
+                with open(LOG_PATH, 'a', encoding='utf-8') as f:
+                    f.write(f"{query}\n")
+                return True
+            except Exception as e:
+                print(f"Log error: {e}")
+    except Exception as e:
+        st.error(f"Ошибка при обработке запроса: {str(e)}")
     return False
 
 # --- ИНТЕРФЕЙС ---
-tabs = st.tabs(["📝 Жалобы", "🧪 Анализы", "📊 Аналитика"])
+st.title("🩺 MedBot Duo")
+st.markdown("Интеллектуальная система первичной диагностики")
 
-with tabs[0]:
-    st.header("📝 Анализ жалоб")
-    user_input = st.text_area("Опишите жалобы:", height=150)
-    
-    if st.button("Определить диагноз"):
-        if user_input.strip():
-            with st.spinner("Анализ..."):
-                # Кодируем запрос пользователя
-                user_emb = encoder.
+tab1, tab2, tab3 = st.tabs(["📝 Жалобы", "🧪 Анализы", "📊 Аналитика"])
+
+# Остальной код интерфейса остается без изменений
