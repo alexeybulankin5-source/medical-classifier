@@ -3,7 +3,7 @@ import json
 import os
 import numpy as np
 from sentence_transformers import SentenceTransformer
-from sklearn.metrics.pairwise import cosine_similarity  # Добавлен импорт
+from sklearn.metrics.pairwise import cosine_similarity  # Добавляем импорт
 
 # --- ПУТИ ---
 PROJECT_PATH = os.path.dirname(os.path.abspath(__file__))
@@ -84,7 +84,7 @@ with tab1:
                 # Кодируем запрос пользователя
                 user_emb = encoder.encode([user_input])[0]
                 
-                # Сравниваем с базой векторов (ТОЧНЫЙ ПОИСК ПО СМЫСЛУ)
+                # Сравниваем с базой векторов
                 sims = cosine_similarity([user_emb], CLASS_EMBEDDINGS)[0]
                 
                 best_idx = np.argmax(sims)
@@ -94,4 +94,5 @@ with tab1:
                 # ЛОГИРУЕМ (Wave 8)
                 log_unknown_query(user_input)
 
-                # --- ВЫВОД (Исправлено: выводим только если нашли по смыслу) ---
+                # --- ВЫВОД РЕЗУЛЬТАТОВ ---
+                if best_score > 0.65:  # Порог уверенности
