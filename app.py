@@ -1,164 +1,43 @@
-# -*- coding: utf-8 -*-
-import os
+
 import streamlit as st
+import json
+import os
+import numpy as np
+from sentence_transformers import SentenceTransformer
+from sklearn.metrics.pairwise import cosine_similarity
 
-import medbot
+# Проверяем наличие файлов
+if not os.path.exists('knowledge.json'):
+    st.error("Файл knowledge.json не найден!")
+    raise FileNotFoundError
 
-PROJECT_PATH = os.path.dirname(os.path.abspath(__file__))
-LOG_PATH = os.path.join(PROJECT_PATH, "unknown_queries.txt")
+if not os.path.exists('class_embeddings.npz'):
+    st.error("Файл class_embeddings.npz не найден!")
+    raise FileNotFoundError
 
-st.set_page_config(page_title="MedBot", page_icon="🩺", layout="wide")
+# Основная логика приложения
+@st.cache_resource
+def load_resources():
+    global kb, encoder, CLASS_NAMES, CLASS_EMBEDDINGS
+    
+    # Загружаем базу знаний
+    with open('knowledge.json', 'r', encoding='utf-8-sig') as f:
+        kb = json.load(f)
+        
+    # Загружаем векторные представления
+    data = np.load('class_embeddings.npz')
+    CLASS_EMBEDDINGS = data['embeddings']
+    CLASS_NAMES = data['names'].tolist()
+    
+    # Инициализируем энкодер
+    encoder = SentenceTransformer('intfloat/multilingual-e5-small')
+    
+    return kb, encoder, CLASS_NAMES, CLASS_EMBEDDINGS
 
-# --- справочник: специалист и обследования по классу ---
-SPECIALISTS = {
-    "гипертония": "Терапевт или кардиолог (первичный визит — терапевт)",
-    "гипотония": "Терапевт или кардиолог",
-    "стенокардия": "Кардиолог (срочно, если приступы участились)",
-    "инфаркт миокарда": "Экстренно: скорая помощь, затем кардиология",
-    "аритмия": "Кардиолог",
-    "мигрень": "Невролог",
-    "головная боль напряжения": "Терапевт, затем невролог при частых приступах",
-    "ОРВИ": "Терапевт при температуре выше 3 дней или ухудшении",
-    "грипп": "Терапевт",
-    "ангина": "Терапевт или ЛОР",
-    "бронхит": "Терапевт, при затяжном кашле — пульмонолог",
-    "пневмония": "Терапевт срочно, затем пульмонолог",
-    "гастрит": "Гастроэнтеролог",
-    "цистит": "Терапевт или уролог",
-    "гломерулонефрит": "Нефролог срочно",
-    "анафилаксия": "Экстренно: скорая помощь",
-    "инсульт": "Экстренно: скорая помощь",
-    "кровотечение ЖКТ": "Экстренно: скорая помощь",
-    "менингит": "Экстренно: скорая помощь",
-    "аппендицит": "Экстренно: хирург, скорая помощь",
-}
-FALLBACK_SPECIALIST = "Терапевт (профильного специалиста для этого класса пока нет в справочнике)"
+kb, encoder, CLASS_NAMES, CLASS_EMBEDDINGS = load_resources()
 
-TESTS = {
-    "гипертония": [
-        "Измерение АД в динамике (утро/вечер, 7 дней, записывать)",
-        "ЭКГ",
-        "Общий анализ крови и мочи",
-        "Креатинин, глюкоза, холестерин (липидограмма)",
-        "Осмотр глазного дна у офтальмолога",
-    ],
-    "гипотония": ["Измерение АД в динамике", "Общий анализ крови (исключить анемию)", "ЭКГ"],
-    "стенокардия": ["ЭКГ", "Холтер (суточное мониторирование)", "Нагрузочный тест по назначению врача", "Липидограмма"],
-    "аритмия": ["ЭКГ", "Холтер (суточное мониторирование)", "ТТГ (исключить проблемы щитовидной железы)"],
-    "мигрень": ["Осмотр невролога; МРТ головы — по назначению врача"],
-    "головная боль напряжения": ["Осмотр терапевта; обследование — только если боль новая или нарастает"],
-    "ОРВИ": ["Обычно анализы не нужны; при температуре дольше 5 дней — общий анализ крови"],
-    "грипп": ["Общий анализ крови при осложнениях; тест на грипп — по назначению врача"],
-    "ангина": ["Осмотр горла, мазок из зева (в т.ч. на стрептококк)", "Общий анализ крови"],
-    "бронхит": ["Осмотр и аускультация", "Рентген грудной клетки при подозрении на пневмонию"],
-    "пневмония": ["Рентген грудной клетки", "Общий анализ крови, СРБ"],
-    "гастрит": ["Гастроскопия (ФГДС)", "Тест на Helicobacter pylori"],
-    "цистит": ["Общий анализ мочи", "Посев мочи"],
-    "гломерулонефрит": ["Общий анализ мочи", "Анализ крови на креатинин", "Консультация нефролога"],
-}
-FALLBACK_TESTS = ["Очный осмотр врача: он определит, нужны ли обследования"]
+# Интерфейс приложения
+st.title("🩺 MedBot Duo")
+st.markdown("Интеллектуальная система первичной диагностики")
 
-def is_draft_text(desc: str) -> bool:
-    """Санитизация: описание с маркерами черновика пациенту не показываем."""
-    d = (desc or "").lower()
-    return any(m in d for m in ("черновик", "требует редактирования", "типичные обращения"))
-
-def log_unknown_query(query: str):
-    if not query.strip():
-        return False
-    try:
-        with open(LOG_PATH, "a", encoding="utf-8") as f:
-            f.write(query.strip() + "\n")
-        return True
-    except Exception as e:
-        st.caption(f"Не удалось записать в лог: {e}")
-    return False
-
-st.title("🩺 MedBot")
-st.markdown("Первичная классификация жалоб: диагноз, уверенность, шаги подтверждения.")
-
-tab1, tab2, tab3 = st.tabs(["📝 Жалобы", "🧪 Анализы", "📊 Аналитика"])
-
-with tab1:
-    st.header("📝 Анализ жалоб")
-    user_input = st.text_area("Опишите жалобы:", height=150)
-    if st.button("Определить диагноз"):
-        if user_input.strip():
-            with st.spinner("Анализ..."):
-                res = medbot.predict(user_input)
-                tier = res.get("confidence")
-                urgent_msgs = medbot.emergency_check(user_input)
-
-                if tier == "low":
-                    log_unknown_query(user_input)
-                    st.info("ℹ️ Уверенности недостаточно. Опишите симптомы подробнее: где болит, как давно, что усиливает.")
-                else:
-                    diagnosis = res.get("diagnosis", "")
-                    st.markdown("### ⚕️ Результат")
-                    st.markdown(f"**Предварительный диагноз:** {diagnosis}")
-                    st.caption(f"Уровень уверенности: **{tier}**. Это не медицинский диагноз — окончательное заключение даёт врач.")
-
-                    # описание: только выверенное, без черновиков
-                    if res.get("description") and not is_draft_text(res["description"]):
-                        st.write(res["description"])
-                    else:
-                        st.info("ℹ️ Подробное описание этого состояния ещё готовится врачом.")
-
-                    # что делать сейчас (бытовые рекомендации)
-                    self_care = medbot.advice_for(diagnosis)
-                    if self_care:
-                        st.markdown("**🏠 Что делать сейчас:**")
-                        st.write(self_care)
-
-                    # шаги подтверждения из базы знаний
-                    if res.get("confirm"):
-                        st.markdown("**✅ Шаги подтверждения:**")
-                        for act in res["confirm"]:
-                            st.write(f"• {act}")
-
-                    # куда обратиться
-                    st.markdown("**🏥 Куда обратиться:**")
-                    st.write(SPECIALISTS.get(diagnosis.lower(), FALLBACK_SPECIALIST))
-
-                    # какие обследования
-                    st.markdown("**🧪 Какие обследования обычно назначают:**")
-                    for t in TESTS.get(diagnosis.lower(), FALLBACK_TESTS):
-                        st.write(f"• {t}")
-
-                    if res.get("urgent"):
-                        st.error("⛔ **ВНИМАНИЕ: ЭКСТРЕННЫЙ СЛУЧАЙ! Немедленно вызовите скорую помощь (103 или 112).**")
-
-                    for msg in urgent_msgs:
-                        st.error(f"🚨 {msg}")
-
-                    if res.get("guard"):
-                        st.caption(f"⚙️ {res['guard']}")
-
-                    alts = res.get("top", [])[1:]
-                    if alts:
-                        st.caption("Альтернативы: " + ", ".join(f"{c} ({v:.2f})" for c, v in alts))
-        else:
-            st.warning("Введите текст жалобы.")
-
-with tab2:
-    st.header("🧪 Анализы")
-    st.info("Модуль в разработке.")
-
-with tab3:
-    st.header("📊 Аналитика (Wave 8)")
-    if os.path.exists(LOG_PATH):
-        try:
-            with open(LOG_PATH, "r", encoding="utf-8") as f:
-                logs = f.readlines()
-            if logs:
-                st.write(f"📊 Собрано неизвестных запросов: {len(logs)}")
-                st.text_area("Последние запросы:", value="".join(logs[-100:]), height=300)
-                if st.button("🗑 Очистить лог"):
-                    open(LOG_PATH, "w").close()
-                    st.rerun()
-            else:
-                st.info("Лог пуст.")
-        except Exception as e:
-            st.error(f"Ошибка: {e}")
-    else:
-        st.info("Лог будет создан после первого запроса.")
+# Остальной код интерфейса...
