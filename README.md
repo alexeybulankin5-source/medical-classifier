@@ -1,7 +1,7 @@
 # 🩺 MedBot Duo
 
 Интеллектуальная система первичной диагностики по жалобам пациента.
-Приложение: [Streamlit Cloud](https://medical-classifier.streamlit.app)
+Приложение: [Streamlit Cloud](https://medical-classifier-nqmhnkpjbrbykc5qrz8lxq.streamlit.app)
 
 ## Как работает
 
