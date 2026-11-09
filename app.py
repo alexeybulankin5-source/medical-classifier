@@ -95,4 +95,3 @@ with tab1:
                 log_unknown_query(user_input)
 
                 # --- ВЫВОД (Исправлено: выводим только если нашли по смыслу) ---
-                if best_score
