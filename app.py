@@ -42,6 +42,17 @@ def load_resources():
 
 kb, encoder, CLASS_NAMES, CLASS_EMBEDDINGS = load_resources()
 
+# --- ВЕРСИЯ ДАННЫХ (диагностика расхождений) ---
+import hashlib as _hl
+_kb_md5 = _hl.md5(open(KB_PATH, "rb").read()).hexdigest()[:8]
+try:
+    _kb_obj = _js.load(open(KB_PATH, encoding="utf-8-sig"))
+    _n_drafts = sum(1 for v in _kb_obj.get("classes", _kb_obj).values()
+                    if "черновик" in (v.get("desc") or "").lower())
+except Exception:
+    _n_drafts = -1
+st.sidebar.caption(f"KB-версия: {_kb_md5} • черновиков: {_n_drafts}")
+
 # --- ДИСАМБИГУАЦИЯ ДАВЛЕНИЯ (правило сильнее сходств) ---
 import re as _re
 def _bp_override(text, top_names):
