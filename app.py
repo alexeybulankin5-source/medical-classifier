@@ -100,8 +100,8 @@ with tab1:
                         st.subheader(f"Возможный диагноз: {found_class_id}")
                         st.write(diagnosis_text)
 
-                        # --- Вывод рекомендаций ---
-                        recommendations = data.get('recommendations')
+                        # --- Вывод рекомендаций (фолбэк на шаги подтверждения из KB) ---
+                        recommendations = data.get('recommendations') or data.get('confirm') or []
                         if recommendations:
                             st.markdown("**🩺 Рекомендации:**")
                             if isinstance(recommendations, list):
@@ -120,8 +120,24 @@ with tab1:
                             else:
                                 st.write(red_flags)
 
-                        if is_urgent:
-                            st.warning("⚠️ Данный диагноз может требовать срочной медицинской консультации. Обратитесь к врачу.")
+                        # --- Возможные альтернативные диагнозы (топ-3 по сходству) ---
+                        try:
+                            sims_np = np.asarray(sims)
+                            order = np.argsort(sims_np)[::-1]
+                            alts = [(CLASS_NAMES[k], float(sims_np[k])) for k in order if CLASS_NAMES[k] != found_class_id][:3]
+                            if alts:
+                                st.markdown("**🔍 Возможные альтернативные диагнозы:**")
+                                for alt_name, alt_score in alts:
+                                    st.write(f"• {alt_name} — сходство {alt_score:.2f}")
+                        except Exception:
+                            pass
+
+                        # --- Уровень срочности (триаж из KB) ---
+                        urgency = data.get('urgency')
+                        if is_urgent or urgency in ('emergency', 'call_ambulance'):
+                            st.warning("⚠️ Данное состояние может требовать срочной медицинской помощи. Обратитесь к врачу немедленно или вызовите скорую.")
+                        elif urgency == 'doctor_visit':
+                            st.info("ℹ️ Рекомендуется плановая консультация врача для подтверждения диагноза.")
 
                         st.markdown("---")
                         st.caption(f"Уверенность модели: {best_score:.2f}")
