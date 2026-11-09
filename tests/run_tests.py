@@ -1,4 +1,6 @@
-import importlib.util, sys, json
+import importlib.util
+import json
+import sys
 
 spec = importlib.util.spec_from_file_location("mb", "medbot.py")
 mb = importlib.util.module_from_spec(spec); sys.modules["mb"] = mb

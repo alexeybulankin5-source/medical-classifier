@@ -1,6 +1,7 @@
-# -*- coding: utf-8 -*-
 import warnings; warnings.filterwarnings("ignore")
-import medbot, json
+import json
+
+import medbot
 
 print("--- справочник глазами кода ---")
 kb = medbot._advice_kb()

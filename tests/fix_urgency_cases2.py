@@ -1,5 +1,5 @@
-# -*- coding: utf-8 -*-
 import json
+
 cases = json.load(open("tests/test_suite.json"))
 changed = 0
 for c in cases:

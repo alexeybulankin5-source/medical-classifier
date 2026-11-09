@@ -1,6 +1,7 @@
-# -*- coding: utf-8 -*-
 # WAVE 7b: трёхуровневый триаж urgent -> urgency (D-008). Стратегия: добавление, не замена.
-import json, shutil, sys
+import json
+import shutil
+import sys
 
 EMERGENCY = {
     "анафилаксия", "аппендицит", "гипертонический криз", "инсульт",

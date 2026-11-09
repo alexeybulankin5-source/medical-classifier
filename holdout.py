@@ -1,12 +1,18 @@
-# -*- coding: utf-8 -*-
-import csv, re, random, warnings, numpy as np
+import csv
+import random
+import re
+import warnings
 from collections import Counter, defaultdict
+
+import numpy as np
+
 warnings.filterwarnings("ignore")
-from sklearn.linear_model import LogisticRegression
 from sentence_transformers import SentenceTransformer
+from sklearn.linear_model import LogisticRegression
+
 rows = list(csv.reader(open("dataset_full.csv", encoding="utf-8")))
 texts = [r[0] for r in rows]; labels = [r[1] for r in rows]
-CLIN = re.compile(r"\b(гипо|гипер|ит\b|синдром|недостаточн|обострени|рецидив|хроническ|терапи|патологи)\w*", re.I)
+CLIN = re.compile(r"\b(гипо|гипер|ит\b|синдром|недостаточн|обострени|рецидив|хроническ|терапи|патологи)\w*", re.IGNORECASE)
 branch = ["mixed" if CLIN.search(t) else "colloquial" for t in texts]
 random.seed(42)
 by_cls = defaultdict(list)

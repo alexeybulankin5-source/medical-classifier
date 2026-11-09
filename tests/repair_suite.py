@@ -1,5 +1,5 @@
-# -*- coding: utf-8 -*-
 import json
+
 head = json.load(open("/tmp/suite_head.json"))
 NEW = [
     # криз-гвард: срабатывает при любой уверенности — кейс охраняет сам гвард (D-007)

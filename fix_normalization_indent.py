@@ -1,5 +1,5 @@
-# -*- coding: utf-8 -*-
 import re
+
 src = open("medbot.py").read()
 lines = src.split("\n")
 

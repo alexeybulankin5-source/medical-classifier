@@ -1,5 +1,5 @@
-# -*- coding: utf-8 -*-
-import json, sys
+import json
+import sys
 
 # --- журнал дефектов ---
 log = json.load(open("defects_log.json"))

@@ -1,5 +1,5 @@
-# -*- coding: utf-8 -*-
 import json
+
 cases = json.load(open("tests/test_suite.json"))
 have = {json.dumps(c, ensure_ascii=False, sort_keys=True) for c in cases}
 new = [

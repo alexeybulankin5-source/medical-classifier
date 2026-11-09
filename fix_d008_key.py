@@ -1,5 +1,5 @@
-# -*- coding: utf-8 -*-
 import json
+
 log = json.load(open("defects_log.json"))
 fixed = 0
 for d in log:

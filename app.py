@@ -1,7 +1,8 @@
-import streamlit as st
 import json
 import os
+
 import numpy as np
+import streamlit as st
 from sentence_transformers import SentenceTransformer
 from sklearn.metrics.pairwise import cosine_similarity
 
@@ -34,7 +35,7 @@ def load_resources():
         encoder = SentenceTransformer('intfloat/multilingual-e5-small')
         
     except Exception as e:
-        st.error(f"Ошибка: {str(e)}")
+        st.error(f"Ошибка: {e!s}")
         raise
         
     return kb, encoder, CLASS_NAMES, CLASS_EMBEDDINGS
@@ -60,7 +61,7 @@ def log_unknown_query(query: str):
                 print(f"Ошибка записи: {e}")
                 return False
     except Exception as e:
-        st.error(f"Ошибка обработки: {str(e)}")
+        st.error(f"Ошибка обработки: {e!s}")
         return False
     return False
 
@@ -129,7 +130,7 @@ with tab1:
                         log_unknown_query(user_input)
 
                 except Exception as e:
-                    st.error(f"Произошла ошибка во время анализа: {str(e)}")
+                    st.error(f"Произошла ошибка во время анализа: {e!s}")
 
 with tab2:
     st.header("🧪 Анализы")
@@ -148,6 +149,7 @@ with tab2:
                 st.info("Для анализа PDF требуется установка дополнительных библиотек. Текст:")
                 try:
                     import io
+
                     import PyPDF2
                     pdf_reader = PyPDF2.PdfReader(io.BytesIO(file_bytes))
                     text = ""
@@ -160,9 +162,10 @@ with tab2:
                 # Для изображений потребуется pytesseract
                 st.info("Для анализа изображений требуется установка OCR-библиотек. Текст:")
                 try:
+                    import io
+
                     import pytesseract
                     from PIL import Image
-                    import io
                     image = Image.open(io.BytesIO(file_bytes))
                     text = pytesseract.image_to_string(image)
                     st.write(text)
@@ -174,7 +177,7 @@ with tab2:
                 st.text_area("Содержимое файла:", value=text, height=200)
                 
         except Exception as e:
-            st.error(f"Не удалось обработать файл: {str(e)}")
+            st.error(f"Не удалось обработать файл: {e!s}")
     else:
         st.info("Ожидание загрузки файла...")
 
@@ -199,7 +202,7 @@ with tab3:
             else:
                 st.info("Журнал неизвестных запросов еще не создан.")
         except Exception as e:
-            st.error(f"Не удалось прочитать журнал: {str(e)}")
+            st.error(f"Не удалось прочитать журнал: {e!s}")
 
     with col2:
         st.subheader("Статистика базы знаний")
@@ -224,4 +227,4 @@ with tab3:
                 else:
                     st.info("Ничего не найдено.")
         except Exception as e:
-            st.error(f"Ошибка статистики: {str(e)}")
+            st.error(f"Ошибка статистики: {e!s}")

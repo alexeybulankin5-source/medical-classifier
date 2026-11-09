@@ -1,7 +1,9 @@
-import numpy as np
-from sentence_transformers import SentenceTransformer
 import json
 import os
+
+import numpy as np
+from sentence_transformers import SentenceTransformer
+
 
 def load_knowledge_base():
     # Загружаем базу знаний

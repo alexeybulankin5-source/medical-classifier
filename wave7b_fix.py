@@ -1,4 +1,3 @@
-# -*- coding: utf-8 -*-
 # WAVE 7b-fix: гвард форсирует urgent ПОСЛЕ присвоения urgency — нормализацию переносим за гвард.
 MARK = "нормализация urgency после криз-гварда"
 src = open("medbot.py").read()
