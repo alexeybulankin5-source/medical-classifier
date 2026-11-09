@@ -24,7 +24,7 @@ def load_resources():
             
         # Загрузка векторов
         if os.path.exists(EMB_PATH):
-            data = np.load(EMB_PATH)
+            data = np.load(EMB_PATH, allow_pickle=True)
             CLASS_EMBEDDINGS = data['embeddings']
             CLASS_NAMES = data['names'].tolist()
         else:
