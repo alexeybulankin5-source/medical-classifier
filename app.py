@@ -89,20 +89,39 @@ with tab1:
                     # Логируем неизвестный запрос
                     log_unknown_query(user_input)
                     
-                    # Выводим результаты
+                    # --- ВЫВОД РЕЗУЛЬТАТОВ ---
                     if best_score > 0.65:
                         data = kb[found_class_id]
-                        
-                        # Исправленная и дополненная часть кода
+
                         is_urgent = data.get('urgent', False)
                         diagnosis_text = data.get('desc', 'Описание диагноза не найдено в базе знаний.')
                         
                         st.subheader(f"Возможный диагноз: {found_class_id}")
                         st.write(diagnosis_text)
-                        
+
+                        # --- Вывод рекомендаций ---
+                        recommendations = data.get('recommendations')
+                        if recommendations:
+                            st.markdown("**🩺 Рекомендации:**")
+                            if isinstance(recommendations, list):
+                                for rec in recommendations:
+                                    st.write(f"• {rec}")
+                            else:
+                                st.write(recommendations)
+
+                        # --- Вывод красных флагов ---
+                        red_flags = data.get('red_flags')
+                        if red_flags:
+                            st.markdown("**🚩 Красные флаги (тревожные симптомы):**")
+                            if isinstance(red_flags, list):
+                                for flag in red_flags:
+                                    st.write(f"• {flag}")
+                            else:
+                                st.write(red_flags)
+
                         if is_urgent:
                             st.warning("⚠️ Данный диагноз может требовать срочной медицинской консультации. Обратитесь к врачу.")
-                        
+
                         st.markdown("---")
                         st.caption(f"Уверенность модели: {best_score:.2f}")
                     else:
@@ -114,20 +133,95 @@ with tab1:
 
 with tab2:
     st.header("🧪 Анализы")
-    st.info("Данный раздел находится в разработке.")
+    st.markdown("### Загрузка результатов лабораторных исследований")
+    uploaded_file = st.file_uploader("Выберите файл (PDF, JPG, PNG, TXT)", type=["pdf", "jpg", "jpeg", "png", "txt"])
+    
+    if uploaded_file is not None:
+        st.success(f"Файл {uploaded_file.name} успешно загружен.")
+        
+        # Детектируем тип файла для правильного чтения
+        file_bytes = uploaded_file.getvalue()
+        
+        try:
+            if uploaded_file.type == "application/pdf":
+                # Для PDF потребуется библиотека PyPDF2 или pdfplumber (не импортирована в начале)
+                st.info("Для анализа PDF требуется установка дополнительных библиотек. Текст:")
+                try:
+                    import io
+                    import PyPDF2
+                    pdf_reader = PyPDF2.PdfReader(io.BytesIO(file_bytes))
+                    text = ""
+                    for page in pdf_reader.pages:
+                        text += page.extract_text()
+                    st.write(text)
+                except ImportError:
+                    st.warning("Установите библиотеку: pip install PyPDF2")
+            elif uploaded_file.type.startswith("image/"):
+                # Для изображений потребуется pytesseract
+                st.info("Для анализа изображений требуется установка OCR-библиотек. Текст:")
+                try:
+                    import pytesseract
+                    from PIL import Image
+                    import io
+                    image = Image.open(io.BytesIO(file_bytes))
+                    text = pytesseract.image_to_string(image)
+                    st.write(text)
+                except ImportError:
+                    st.warning("Установите библиотеки: pip install pytesseract pillow")
+            else:
+                # Текстовые файлы
+                text = file_bytes.decode('utf-8')
+                st.text_area("Содержимое файла:", value=text, height=200)
+                
+        except Exception as e:
+            st.error(f"Не удалось обработать файл: {str(e)}")
+    else:
+        st.info("Ожидание загрузки файла...")
 
 with tab3:
     st.header("📊 Аналитика")
-    st.subheader("Неизвестные запросы")
-    try:
-        if os.path.exists(LOG_PATH):
-            with open(LOG_PATH, 'r', encoding='utf-8') as f:
-                logs = f.readlines()
-            if logs:
-                st.text_area("Запросы, которые система не смогла распознать:", value="".join(logs), height=300)
+    
+    col1, col2 = st.columns(2)
+    
+    with col1:
+        st.subheader("Неизвестные запросы")
+        try:
+            if os.path.exists(LOG_PATH):
+                with open(LOG_PATH, 'r', encoding='utf-8') as f:
+                    logs = f.readlines()
+                if logs:
+                    st.text_area("Запросы, которые система не смогла распознать:", value="".join(logs), height=300)
+                    if st.button("Очистить журнал"):
+                        open(LOG_PATH, 'w', encoding='utf-8').close()
+                        st.rerun()
+                else:
+                    st.success("Журнал неизвестных запросов пуст.")
             else:
-                st.success("Журнал неизвестных запросов пуст.")
-        else:
-            st.info("Журнал неизвестных запросов еще не создан.")
-    except Exception as e:
-        st.error(f"Не удалось прочитать журнал: {str(e)}")
+                st.info("Журнал неизвестных запросов еще не создан.")
+        except Exception as e:
+            st.error(f"Не удалось прочитать журнал: {str(e)}")
+
+    with col2:
+        st.subheader("Статистика базы знаний")
+        try:
+            total_classes = len(kb)
+            urgent_count = sum(1 for v in kb.values() if v.get('urgent') is True)
+            with_recs = sum(1 for v in kb.values() if v.get('recommendations'))
+            with_flags = sum(1 for v in kb.values() if v.get('red_flags'))
+            
+            st.metric("Всего диагнозов", total_classes)
+            st.metric("С пометкой 'Срочно'", urgent_count)
+            st.metric("С рекомендациями", with_recs)
+            st.metric("С красными флагами", with_flags)
+            
+            st.markdown("---")
+            st.markdown("### Поиск по базе знаний")
+            search_term = st.text_input("Введите ID диагноза или ключевое слово")
+            if search_term:
+                results = {k: v for k, v in kb.items() if search_term.lower() in k.lower() or search_term.lower() in str(v).lower()}
+                if results:
+                    st.json(results)
+                else:
+                    st.info("Ничего не найдено.")
+        except Exception as e:
+            st.error(f"Ошибка статистики: {str(e)}")
