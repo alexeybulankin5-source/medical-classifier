@@ -95,4 +95,4 @@ with tab1:
                         
                         if not data.get('draft', True) and data.get('desc'):
                             diagnosis_text = data['desc']
-                            is_urgent = data.get('urgent', False)
+                            is_urgent = data.get('urgent',
