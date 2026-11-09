@@ -93,6 +93,41 @@ with tab1:
                     if best_score > 0.65:
                         data = kb[found_class_id]
                         
-                        if not data.get('draft', True) and data.get('desc'):
-                            diagnosis_text = data['desc']
-                            is_urgent = data.get('urgent',
+                        # Исправленная и дополненная часть кода
+                        is_urgent = data.get('urgent', False)
+                        diagnosis_text = data.get('desc', 'Описание диагноза не найдено в базе знаний.')
+                        
+                        st.subheader(f"Возможный диагноз: {found_class_id}")
+                        st.write(diagnosis_text)
+                        
+                        if is_urgent:
+                            st.warning("⚠️ Данный диагноз может требовать срочной медицинской консультации. Обратитесь к врачу.")
+                        
+                        st.markdown("---")
+                        st.caption(f"Уверенность модели: {best_score:.2f}")
+                    else:
+                        st.info("Система не смогла определить диагноз с достаточной уверенностью. Попробуйте переформулировать жалобы или обратитесь к врачу.")
+                        log_unknown_query(user_input)
+
+                except Exception as e:
+                    st.error(f"Произошла ошибка во время анализа: {str(e)}")
+
+with tab2:
+    st.header("🧪 Анализы")
+    st.info("Данный раздел находится в разработке.")
+
+with tab3:
+    st.header("📊 Аналитика")
+    st.subheader("Неизвестные запросы")
+    try:
+        if os.path.exists(LOG_PATH):
+            with open(LOG_PATH, 'r', encoding='utf-8') as f:
+                logs = f.readlines()
+            if logs:
+                st.text_area("Запросы, которые система не смогла распознать:", value="".join(logs), height=300)
+            else:
+                st.success("Журнал неизвестных запросов пуст.")
+        else:
+            st.info("Журнал неизвестных запросов еще не создан.")
+    except Exception as e:
+        st.error(f"Не удалось прочитать журнал: {str(e)}")
