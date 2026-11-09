@@ -3,4 +3,3 @@ sentence-transformers
 numpy
 scikit-learn
 joblib
-cosine-similarity
