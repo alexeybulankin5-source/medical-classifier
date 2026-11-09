@@ -42,6 +42,25 @@ def load_resources():
 
 kb, encoder, CLASS_NAMES, CLASS_EMBEDDINGS = load_resources()
 
+# --- ДИСАМБИГУАЦИЯ ДАВЛЕНИЯ (правило сильнее сходств) ---
+import re as _re
+def _bp_override(text, top_names):
+    t = text.lower()
+    m = _re.search(r"(\d{2,3})\s*(?:на|/|–|-)\s*(\d{2,3})", t)
+    if m:
+        hi, lo = int(m.group(1)), int(m.group(2))
+        if hi >= 140 or lo >= 90:
+            return "гипертония" if "гипертония" in top_names else None
+        if hi <= 110:
+            return "гипотония" if "гипотония" in top_names else None
+    if any(w in t for w in ["повышенное давление", "высокое давление",
+                            "подскочило давление", "давление подскочило"]):
+        return "гипертония" if "гипертония" in top_names else None
+    if any(w in t for w in ["низкое давление", "пониженное давление",
+                            "давление упало", "упало давление"]):
+        return "гипотония" if "гипотония" in top_names else None
+    return None
+
 # --- ЛОГИРОВАНИЕ НЕИЗВЕСТНЫХ ЗАПРОСОВ ---
 def log_unknown_query(query: str):
     if not query.strip(): 
@@ -86,6 +105,13 @@ with tab1:
                     best_idx = np.argmax(sims)
                     best_score = sims[best_idx]
                     found_class_id = CLASS_NAMES[best_idx]
+
+                    top5 = [CLASS_NAMES[i] for i in np.argsort(sims)[::-1][:5]]
+                    _override = _bp_override(user_input, top5)
+                    if _override and _override != found_class_id:
+                        best_idx = CLASS_NAMES.index(_override)
+                        best_score = sims[best_idx]
+                        found_class_id = _override
                     
                     # Логируем неизвестный запрос
                     log_unknown_query(user_input)
