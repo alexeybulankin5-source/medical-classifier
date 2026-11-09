@@ -41,22 +41,6 @@ def load_resources():
 
 kb, encoder, CLASS_NAMES, CLASS_EMBEDDINGS = load_resources()
 
-# --- ОТЛАДОЧНЫЙ ВЫВОД ---
-try:
-    st.title("🩺 MedBot Duo")
-    st.markdown("Интеллектуальная система первичной диагностики")
-    
-    # Проверка файлов
-    st.write(f"knowledge.json существует: {os.path.exists(KB_PATH)}")
-    st.write(f"class_embeddings.npz существует: {os.path.exists(EMB_PATH)}")
-    
-    # Проверка прав доступа
-    if not os.access(KB_PATH, os.R_OK):
-        st.error("Нет прав на чтение knowledge.json")
-        
-    if not os.access(EMB_PATH, os.R_OK):
-        st.error("Нет прав на чтение class_embeddings.npz")
-
 # --- ЛОГИРОВАНИЕ (Wave 8) ---
 def log_unknown_query(query: str):
     if not query.strip(): 
@@ -77,16 +61,38 @@ def log_unknown_query(query: str):
                     f.write(f"{query}\n")
                 return True
             except Exception as e:
-                print(f"Log error: {e}")
+                print(f"Ошибка при записи в лог: {e}")
+                return False
     except Exception as e:
         st.error(f"Ошибка при обработке запроса: {str(e)}")
+        return False
     return False
 
 # --- ИНТЕРФЕЙС ---
-tabs = st.tabs(["📝 Жалобы", "🧪 Анализы", "📊 Аналитика"])
+st.title("🩺 MedBot Duo")
+st.markdown("Интеллектуальная система первичной диагностики")
 
-with tabs[0]:
+tab1, tab2, tab3 = st.tabs(["📝 Жалобы", "🧪 Анализы", "📊 Аналитика"])
+
+with tab1:
     st.header("📝 Анализ жалоб")
     user_input = st.text_area("Опишите жалобы:", height=150)
     
-    if st.
+    if st.button("Определить диагноз"):
+        if user_input.strip():
+            with st.spinner("Анализ..."):
+                # Кодируем запрос пользователя
+                user_emb = encoder.encode([user_input])[0]
+                
+                # Сравниваем с базой векторов (ТОЧНЫЙ ПОИСК ПО СМЫСЛУ)
+                sims = cosine_similarity([user_emb], CLASS_EMBEDDINGS)[0]
+                
+                best_idx = np.argmax(sims)
+                best_score = sims[best_idx]
+                found_class_id = CLASS_NAMES[best_idx]
+
+                # ЛОГИРУЕМ (Wave 8)
+                log_unknown_query(user_input)
+
+                # --- ВЫВОД (Исправлено: выводим только если нашли по смыслу) ---
+                if best_score
