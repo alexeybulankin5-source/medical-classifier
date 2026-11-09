@@ -3,7 +3,7 @@ import json
 import os
 import numpy as np
 from sentence_transformers import SentenceTransformer
-from sklearn.metrics.pairwise import cosine_similarity  # Добавляем импорт
+from sklearn.metrics.pairwise import cosine_similarity  # Добавлен импорт
 
 # --- ПУТИ ---
 PROJECT_PATH = os.path.dirname(os.path.abspath(__file__))
@@ -41,6 +41,22 @@ def load_resources():
 
 kb, encoder, CLASS_NAMES, CLASS_EMBEDDINGS = load_resources()
 
+# --- ОТЛАДОЧНЫЙ ВЫВОД ---
+try:
+    st.title("🩺 MedBot Duo")
+    st.markdown("Интеллектуальная система первичной диагностики")
+    
+    # Проверка файлов
+    st.write(f"knowledge.json существует: {os.path.exists(KB_PATH)}")
+    st.write(f"class_embeddings.npz существует: {os.path.exists(EMB_PATH)}")
+    
+    # Проверка прав доступа
+    if not os.access(KB_PATH, os.R_OK):
+        st.error("Нет прав на чтение knowledge.json")
+        
+    if not os.access(EMB_PATH, os.R_OK):
+        st.error("Нет прав на чтение class_embeddings.npz")
+
 # --- ЛОГИРОВАНИЕ (Wave 8) ---
 def log_unknown_query(query: str):
     if not query.strip(): 
@@ -67,9 +83,10 @@ def log_unknown_query(query: str):
     return False
 
 # --- ИНТЕРФЕЙС ---
-st.title("🩺 MedBot Duo")
-st.markdown("Интеллектуальная система первичной диагностики")
+tabs = st.tabs(["📝 Жалобы", "🧪 Анализы", "📊 Аналитика"])
 
-tab1, tab2, tab3 = st.tabs(["📝 Жалобы", "🧪 Анализы", "📊 Аналитика"])
-
-# Остальной код интерфейса остается без изменений
+with tabs[0]:
+    st.header("📝 Анализ жалоб")
+    user_input = st.text_area("Опишите жалобы:", height=150)
+    
+    if st.
