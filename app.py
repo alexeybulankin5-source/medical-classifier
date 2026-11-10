@@ -66,6 +66,12 @@ def _bp_override(text, top_names):
     if m:
         hi, lo = int(m.group(1)), int(m.group(2))
         if hi >= 140 or lo >= 90:
+            crisis = ["разрывается", "распирает", "тошнит", "тошнота", "рвот", "мушки",
+                      "пелена", "шумит в ушах", "звон в ушах", "не сбивается", "не сбил",
+                      "давит в груди", "боль в груди", "перекос", "онемел",
+                      "речь нарушилась", "смазан", "двоится", "мутит"]
+            if any(w in t for w in crisis):
+                return "гипертонический криз" if "гипертонический криз" in top_names else None
             return "гипертония" if "гипертония" in top_names else None
         if hi <= 110:
             return "гипотония" if "гипотония" in top_names else None
