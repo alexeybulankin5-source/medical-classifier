@@ -14,7 +14,7 @@ EMB_PATH = os.path.join(PROJECT_PATH, 'class_embeddings.npz')
 
 # --- ЗАГРУЗКА РЕСУРСОВ ---
 @st.cache_resource
-def load_resources():
+def load_resources(_kb_md5=''):
     global kb, encoder, CLASS_NAMES, CLASS_EMBEDDINGS
     
     try:
@@ -40,7 +40,9 @@ def load_resources():
         
     return kb, encoder, CLASS_NAMES, CLASS_EMBEDDINGS
 
-kb, encoder, CLASS_NAMES, CLASS_EMBEDDINGS = load_resources()
+import hashlib as _h_cache
+_kb_md5 = _h_cache.md5(open(KB_PATH, "rb").read()).hexdigest()[:8]
+kb, encoder, CLASS_NAMES, CLASS_EMBEDDINGS = load_resources(_kb_md5)
 
 # --- ВЕРСИЯ ДАННЫХ (диагностика расхождений) ---
 import hashlib as _hl
@@ -53,8 +55,8 @@ except Exception:
     _n_drafts = -1
 try:
     _n_recs = sum(1 for v in _kb_obj.get("classes", _kb_obj).values() if v.get("recommendations"))
-except Exception:
-    _n_recs = -1
+except Exception as _e:
+    _n_recs = f'ERR {_e!r}'
 st.sidebar.caption(f"KB-версия: {_kb_md5} • черновиков: {_n_drafts} • рекомендаций: {_n_recs}")
 
 # --- ДИСАМБИГУАЦИЯ ДАВЛЕНИЯ (правило сильнее сходств) ---
