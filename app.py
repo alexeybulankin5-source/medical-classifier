@@ -311,14 +311,30 @@ def _lab_match_signs(f, values):
         if ok: hits.append(name)
     return hits
 
+_FOLLOW_EXCLUDE = {
+    "гемоглобин": ["гликированный", "a1c"],
+    "билирубин": ["прямой", "непрямой", "связанный", "несвязанный"],
+    "холестерин": ["лпнп", "лпвп"],
+}
+
+_FOLLOW_EXCLUDE = {
+    "гемоглобин": ["гликированный", "a1c"],
+    "билирубин": ["прямой", "непрямой", "связанный", "несвязанный"],
+    "холестерин": ["лпнп", "лпвп"],
+}
+
 def _parse_lab_text(text):
     t = text.lower().replace("ё", "е").replace(",", ".")
     found = {}
     for name, p in _PARAMS.items():
         for alias in p["aliases"]:
             a = alias.lower().replace("ё", "е")
-            m = _lre.search(_lre.escape(a) + r"[^\d\-]{0,25}(\d+(?:\.\d+)?)", t)
-            if m:
+            for m in _lre.finditer(_lre.escape(a) + r"[^\d\-]{0,25}(\d+(?:\.\d+)?)", t):
+                gap = t[m.start() + len(a): m.start(1)]
+                prev_words = t[:m.start()].split()
+                prev = prev_words[-1].strip(",;:()") if prev_words else ""
+                if any(w in gap or w == prev for w in _FOLLOW_EXCLUDE.get(a, [])):
+                    continue
                 try: v = float(m.group(1))
                 except ValueError: continue
                 if 0.01 * p["low"] < v < 100 * (p.get("high") or 1):
