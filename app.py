@@ -441,6 +441,35 @@ with tab2:
                     if _fc4.button("👎 Расшифровка не помогла", key=_fb_key2 + "_down"):
                         _fb_record("анализы", _fb_item, "👎")
                         st.toast("Записал — посмотрим в аналитику.")
+                    # --- Экспорт отчёта для врача ---
+                    try:
+                        _marks = {"normal": "✅ в норме", "low": "▼ ниже нормы", "high": "▲ выше нормы"}
+                        _rows = ""
+                        for _n in values:
+                            _p = _PARAMS.get(_n, {})
+                            _st_ = f.get(_n)
+                            _rows += ("<tr><td>" + _n + "</td><td>" + str(values[_n]) + " " + _p.get("unit", "") + "</td><td>" + _marks.get(_st_, "—") + "</td></tr>")
+                        _pats = "".join("<li>" + h + "</li>" for h in hits) if hits else "<li>не выявлено</li>"
+                        _sex_h = "женский" if sex == "ж" else "мужской"
+                        _age_h = (" | Возраст: " + str(int(age))) if age else ""
+                        _rep = ("<!DOCTYPE html><html><head><meta charset='utf-8'><title>Отчёт по анализам</title>"
+                                "<style>body{font-family:sans-serif;margin:24px}table{border-collapse:collapse;width:100%}"
+                                "td,th{border:1px solid #ccc;padding:6px;text-align:left}h1{font-size:20px}"
+                                ".disclaimer{color:#666;font-size:12px;margin-top:16px}</style></head><body>"
+                                "<h1>Расшифровка лабораторных показателей</h1>"
+                                "<p>Дата: " + __import__("datetime").datetime.now().strftime("%d.%m.%Y %H:%M") +
+                                " | Пол: " + _sex_h + _age_h + "</p>"
+                                "<table><tr><th>Показатель</th><th>Значение</th><th>Оценка</th></tr>" + _rows + "</table>"
+                                "<h3>Выявленные паттерны</h3><ul>" + _pats + "</ul>"
+                                "<p class='disclaimer'>Автоматическая расшифровка, не является диагнозом. "
+                                "Окончательную интерпретацию выполняет врач с учётом клинической картины.</p>"
+                                "</body></html>")
+                        st.download_button("📄 Скачать отчёт для врача", data=_rep.encode("utf-8"),
+                                           file_name="otchet_analizy.html", mime="text/html",
+                                           key="dl_report_lab")
+                    except Exception:
+                        st.caption("Отчёт для врача сейчас недоступен")
+
                     st.caption("Расшифровка носит информационный характер и не заменяет консультацию врача: анализы интерпретируются вместе с жалобами и осмотром.")
 
 with tab3:
