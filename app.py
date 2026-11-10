@@ -48,7 +48,6 @@ kb, encoder, CLASS_NAMES, CLASS_EMBEDDINGS = load_resources(_kb_md5)
 import hashlib as _hl
 _kb_md5 = _hl.md5(open(KB_PATH, "rb").read()).hexdigest()[:8]
 try:
-    kb = _js.load(open(KB_PATH, encoding="utf-8-sig"))
     _n_drafts = sum(1 for v in kb.get("classes", kb).values()
                     if "черновик" in (v.get("desc") or "").lower())
 except Exception:
