@@ -231,12 +231,33 @@ with tab1:
 
                         st.markdown("---")
                         st.caption(f"Уверенность модели: {best_score:.2f}")
+
+                        # --- Обратная связь пользователя ---
+                        _fb_key = f"fb1_{abs(hash(found_class_id)) % 100000}"
+                        _fc1, _fc2 = st.columns(2)
+                        if _fc1.button("👍 Диагноз полезен", key=_fb_key + "_up"):
+                            _fb_record("жалобы", found_class_id, "👍")
+                            st.toast("Спасибо! Отзыв записан в аналитику.")
+                        if _fc2.button("👎 Диагноз не подошёл", key=_fb_key + "_down"):
+                            _fb_record("жалобы", found_class_id, "👎")
+                            st.toast("Записал — посмотрим в аналитику.")
                     else:
                         st.info("Система не смогла определить диагноз с достаточной уверенностью. Попробуйте переформулировать жалобы или обратитесь к врачу.")
                         log_unknown_query(user_input)
 
                 except Exception as e:
                     st.error(f"Произошла ошибка во время анализа: {e!s}")
+
+# --- ОБРАТНАЯ СВЯЗЬ: запись отзывов ---
+FEEDBACK_PATH = "feedback.csv"
+def _fb_record(source, item, verdict):
+    import csv as _csv, datetime as _dt, os as _os
+    exists = _os.path.exists(FEEDBACK_PATH)
+    with open(FEEDBACK_PATH, "a", encoding="utf-8", newline="") as fh:
+        w = _csv.writer(fh, delimiter=";")
+        if not exists:
+            w.writerow(["время", "источник", "объект", "оценка"])
+        w.writerow([_dt.datetime.now().strftime("%Y-%m-%d %H:%M"), source, item, verdict])
 
 # --- ЛАБОРАТОРНЫЙ МОДУЛЬ: база, знаковый движок, парсер ---
 @st.cache_resource
@@ -394,23 +415,34 @@ with tab2:
                                 st.markdown(f"- {r}")
                     else:
                         st.info("Явных паттернов не найдено — серьёзных сочетаний отклонений в распознанных показателях нет.")
+                    # --- Обратная связь пользователя ---
+                    _fb_item = ", ".join(hits) if hits else "без паттернов"
+                    _fb_key2 = f"fb2_{abs(hash(_fb_item)) % 100000}"
+                    _fc3, _fc4 = st.columns(2)
+                    if _fc3.button("👍 Расшифровка полезна", key=_fb_key2 + "_up"):
+                        _fb_record("анализы", _fb_item, "👍")
+                        st.toast("Спасибо! Отзыв записан в аналитику.")
+                    if _fc4.button("👎 Расшифровка не помогла", key=_fb_key2 + "_down"):
+                        _fb_record("анализы", _fb_item, "👎")
+                        st.toast("Записал — посмотрим в аналитику.")
                     st.caption("Расшифровка носит информационный характер и не заменяет консультацию врача: анализы интерпретируются вместе с жалобами и осмотром.")
 
 with tab3:
     st.header("📊 Аналитика")
-    
+
     col1, col2 = st.columns(2)
-    
+
     with col1:
         st.subheader("Неизвестные запросы")
         try:
             if os.path.exists(LOG_PATH):
-                with open(LOG_PATH, 'r', encoding='utf-8') as f:
+                with open(LOG_PATH, "r", encoding="utf-8") as f:
                     logs = f.readlines()
                 if logs:
-                    st.text_area("Запросы, которые система не смогла распознать:", value="".join(logs), height=300)
+                    st.text_area("Запросы, которые система не смогла распознать:",
+                                 value="".join(logs), height=300)
                     if st.button("Очистить журнал"):
-                        open(LOG_PATH, 'w', encoding='utf-8').close()
+                        open(LOG_PATH, "w", encoding="utf-8").close()
                         st.rerun()
                 else:
                     st.success("Журнал неизвестных запросов пуст.")
@@ -422,24 +454,43 @@ with tab3:
     with col2:
         st.subheader("Статистика базы знаний")
         try:
-            total_classes = len(kb)
-            urgent_count = sum(1 for v in kb.values() if v.get('urgent') is True)
-            with_recs = sum(1 for v in kb.values() if v.get('recommendations'))
-            with_flags = sum(1 for v in kb.values() if v.get('red_flags'))
-            
-            st.metric("Всего диагнозов", total_classes)
-            st.metric("С пометкой 'Срочно'", urgent_count)
-            st.metric("С рекомендациями", with_recs)
-            st.metric("С красными флагами", with_flags)
-            
+            st.metric("Всего диагнозов", len(kb))
+            st.metric("С пометкой 'Срочно'",
+                      sum(1 for v in kb.values() if v.get("urgent") is True))
+            st.metric("С рекомендациями",
+                      sum(1 for v in kb.values() if v.get("recommendations")))
+            st.metric("С красными флагами",
+                      sum(1 for v in kb.values() if v.get("red_flags")))
             st.markdown("---")
             st.markdown("### Поиск по базе знаний")
             search_term = st.text_input("Введите ID диагноза или ключевое слово")
             if search_term:
-                results = {k: v for k, v in kb.items() if search_term.lower() in k.lower() or search_term.lower() in str(v).lower()}
+                results = {k: v for k, v in kb.items()
+                           if search_term.lower() in k.lower()
+                           or search_term.lower() in str(v).lower()}
                 if results:
                     st.json(results)
                 else:
                     st.info("Ничего не найдено.")
         except Exception as e:
             st.error(f"Ошибка статистики: {e!s}")
+
+    st.markdown("---")
+    st.subheader("Отзывы пользователей")
+    try:
+        import pandas as _fbpd
+        if os.path.exists(FEEDBACK_PATH):
+            _fb = _fbpd.read_csv(FEEDBACK_PATH, sep=";")
+            _up = int((_fb["оценка"] == "👍").sum())
+            _down = int((_fb["оценка"] == "👎").sum())
+            _mc1, _mc2, _mc3 = st.columns(3)
+            _mc1.metric("👍 Полезно", _up)
+            _mc2.metric("👎 Не то", _down)
+            _mc3.metric("Всего отзывов", len(_fb))
+            if _down:
+                st.markdown("**👎 Последние негативные:**")
+                st.dataframe(_fb[_fb["оценка"] == "👎"].tail(10), use_container_width=True)
+        else:
+            st.info("Отзывы пока не собирались.")
+    except Exception as e:
+        st.error(f"Ошибка отзывов: {e!s}")
