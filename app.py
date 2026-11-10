@@ -238,54 +238,155 @@ with tab1:
                 except Exception as e:
                     st.error(f"Произошла ошибка во время анализа: {e!s}")
 
+# --- ЛАБОРАТОРНЫЙ МОДУЛЬ: база, знаковый движок, парсер ---
+@st.cache_resource
+def _load_lab_e5():
+    from sentence_transformers import SentenceTransformer
+    return SentenceTransformer("intfloat/multilingual-e5-small")
+
+import json as _lj, re as _lre, numpy as _lnp
+try:
+    _lab_kb = _lj.load(open("lab_knowledge.json", encoding="utf-8"))
+    _lab_emb = _lnp.load("lab_embeddings.npz", allow_pickle=True)
+    _PARAMS, _PATTERNS = _lab_kb["parameters"], _lab_kb["patterns"]
+    _LAB_X = _lab_emb["embeddings"].astype(_lnp.float32)
+    _LAB_NAMES = [str(x) for x in _lab_emb["names"]]
+    _LAB_XN = _LAB_X / _lnp.linalg.norm(_LAB_X, axis=1, keepdims=True)
+    _LAB_READY = True
+except Exception as _le:
+    _LAB_READY, _LAB_ERR = False, str(_le)
+
+def _lab_facts(values):
+    f = {}
+    for name, p in _PARAMS.items():
+        if values.get(name) is None: continue
+        v = values[name]
+        f[name] = "low" if v < p["low"] else ("high" if v > p["high"] else "normal")
+    return f
+
+def _lab_match_signs(f, values):
+    hits = []
+    for name, pat in _PATTERNS.items():
+        signs = pat.get("signs")
+        if not signs: continue
+        ok = True
+        for param, want in signs:
+            if param == "глюкоза":
+                v = values.get("глюкоза")
+                if v is None: ok = False
+                elif want == "high_moderate" and not (5.6 <= v <= 6.9): ok = False
+                elif want == "high_severe" and not (v >= 7.0): ok = False
+                elif want == "low" and not (v < 3.3): ok = False
+            elif param not in values: ok = False
+            elif param == "ферритин" and want == "normal_or_high":
+                if f.get(param) not in ("normal", "high"): ok = False
+            elif f.get(param) != want: ok = False
+            if not ok: break
+        if ok: hits.append(name)
+    return hits
+
+def _parse_lab_text(text):
+    t = text.lower().replace("ё", "е").replace(",", ".")
+    found = {}
+    for name, p in _PARAMS.items():
+        for alias in p["aliases"]:
+            a = alias.lower().replace("ё", "е")
+            m = _lre.search(_lre.escape(a) + r"[^\d\-]{0,25}(\d+(?:\.\d+)?)", t)
+            if m:
+                try: v = float(m.group(1))
+                except ValueError: continue
+                if 0.01 * p["low"] < v < 100 * (p.get("high") or 1):
+                    found[name] = v
+                break
+    return found
+
 with tab2:
     st.header("🧪 Анализы")
-    st.markdown("### Загрузка результатов лабораторных исследований")
-    uploaded_file = st.file_uploader("Выберите файл (PDF, JPG, PNG, TXT)", type=["pdf", "jpg", "jpeg", "png", "txt"])
-    
-    if uploaded_file is not None:
-        st.success(f"Файл {uploaded_file.name} успешно загружен.")
-        
-        # Детектируем тип файла для правильного чтения
-        file_bytes = uploaded_file.getvalue()
-        
-        try:
-            if uploaded_file.type == "application/pdf":
-                # Для PDF потребуется библиотека PyPDF2 или pdfplumber (не импортирована в начале)
-                st.info("Для анализа PDF требуется установка дополнительных библиотек. Текст:")
-                try:
-                    import io
+    st.markdown("### Вставьте текст анализа или загрузите файл — расшифровка, паттерны и красные флаги")
 
-                    import PyPDF2
-                    pdf_reader = PyPDF2.PdfReader(io.BytesIO(file_bytes))
-                    text = ""
-                    for page in pdf_reader.pages:
-                        text += page.extract_text()
-                    st.write(text)
-                except ImportError:
-                    st.warning("Установите библиотеку: pip install PyPDF2")
-            elif uploaded_file.type.startswith("image/"):
-                # Для изображений потребуется pytesseract
-                st.info("Для анализа изображений требуется установка OCR-библиотек. Текст:")
-                try:
-                    import io
-
-                    import pytesseract
-                    from PIL import Image
-                    image = Image.open(io.BytesIO(file_bytes))
-                    text = pytesseract.image_to_string(image)
-                    st.write(text)
-                except ImportError:
-                    st.warning("Установите библиотеки: pip install pytesseract pillow")
-            else:
-                # Текстовые файлы
-                text = file_bytes.decode('utf-8')
-                st.text_area("Содержимое файла:", value=text, height=200)
-                
-        except Exception as e:
-            st.error(f"Не удалось обработать файл: {e!s}")
+    if not _LAB_READY:
+        st.error(f"Лабораторная база недоступна: {_LAB_ERR}")
     else:
-        st.info("Ожидание загрузки файла...")
+        user_text = st.text_area("Текст анализа (скопируйте из бланка):", height=140)
+        uploaded_file = st.file_uploader("Или загрузите файл (PDF, JPG, PNG, TXT)",
+                                         type=["pdf", "jpg", "jpeg", "png", "txt"])
+        file_text = ""
+        if uploaded_file is not None:
+            st.success(f"Файл {uploaded_file.name} успешно загружен.")
+            file_bytes = uploaded_file.getvalue()
+            try:
+                if uploaded_file.type == "application/pdf":
+                    try:
+                        from pypdf import PdfReader
+                    except ImportError:
+                        from PyPDF2 import PdfReader
+                    import io as _io
+                    file_text = "".join((page.extract_text() or "") for page in PdfReader(_io.BytesIO(file_bytes)).pages)
+                elif uploaded_file.type.startswith("image/"):
+                    try:
+                        import pytesseract
+                        from PIL import Image
+                        import io as _io
+                        file_text = pytesseract.image_to_string(Image.open(_io.BytesIO(file_bytes)))
+                    except ImportError:
+                        st.warning("Для изображений нужен OCR: pip install pytesseract pillow. Или вставьте текст вручную.")
+                else:
+                    file_text = file_bytes.decode("utf-8", errors="ignore")
+                if file_text:
+                    st.text_area("Распознанный текст файла:", value=file_text, height=150)
+            except Exception as e:
+                st.error(f"Не удалось обработать файл: {e!s}")
+
+        if st.button("🔍 Интерпретировать"):
+            full = ((user_text or "") + "\n" + (file_text or "")).strip()
+            if not full:
+                st.warning("Вставьте текст или загрузите файл.")
+            else:
+                with st.spinner("Разбор показателей..."):
+                    values = _parse_lab_text(full)
+                if not values:
+                    st.info("Показателей не распознано. Формат: «гемоглобин 90», «ТТГ 8.5», «сахар крови 6.1».")
+                else:
+                    st.markdown("### 📋 Расшифровка показателей")
+                    f = _lab_facts(values)
+                    vd = {"low": "ниже нормы", "high": "выше нормы", "normal": "в норме"}
+                    for name, v in values.items():
+                        p = _PARAMS[name]
+                        mark = {"low": "🔻", "high": "🔺", "normal": "✅"}[f[name]]
+                        st.markdown(f"- {mark} **{name}: {v} {p['unit']}** — {vd[f[name]]} (норма {p['low']}–{p['high']})")
+
+                    crit = []
+                    for name, v in values.items():
+                        p = _PARAMS[name]
+                        cl, ch = p.get("crit_low"), p.get("crit_high")
+                        if cl is not None and v < cl:
+                            crit.append(f"**{name} = {v}** — критически низкий (порог {cl})")
+                        if ch is not None and v > ch:
+                            crit.append(f"**{name} = {v}** — критически высокий (порог {ch})")
+                    if crit:
+                        st.error("🚨 **Критические значения — нужен врач сейчас:** " + "; ".join(crit))
+
+                    hits = _lab_match_signs(f, values)
+                    if not hits:
+                        q = _load_lab_e5().encode([f"query: {full[:400]}"], normalize_embeddings=True)[0].astype(_lnp.float32)
+                        sims = _LAB_XN @ q
+                        best = int(_lnp.argmax(sims))
+                        if sims[best] >= 0.85:
+                            hits = [_LAB_NAMES[best]]
+
+                    if hits:
+                        st.markdown("### 🔎 Возможные паттерны")
+                        for h in hits:
+                            pat = _PATTERNS[h]
+                            st.subheader(h)
+                            st.write(pat["desc"])
+                            st.warning(pat["danger"])
+                            st.markdown("**🩺 Рекомендации:**")
+                            for r in pat["recommendations"]:
+                                st.markdown(f"- {r}")
+                    else:
+                        st.info("Явных паттернов не найдено — серьёзных сочетаний отклонений в распознанных показателях нет.")
+                    st.caption("Расшифровка носит информационный характер и не заменяет консультацию врача: анализы интерпретируются вместе с жалобами и осмотром.")
 
 with tab3:
     st.header("📊 Аналитика")
