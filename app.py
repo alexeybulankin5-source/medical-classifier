@@ -48,13 +48,13 @@ kb, encoder, CLASS_NAMES, CLASS_EMBEDDINGS = load_resources(_kb_md5)
 import hashlib as _hl
 _kb_md5 = _hl.md5(open(KB_PATH, "rb").read()).hexdigest()[:8]
 try:
-    _kb_obj = _js.load(open(KB_PATH, encoding="utf-8-sig"))
-    _n_drafts = sum(1 for v in _kb_obj.get("classes", _kb_obj).values()
+    kb = _js.load(open(KB_PATH, encoding="utf-8-sig"))
+    _n_drafts = sum(1 for v in kb.get("classes", kb).values()
                     if "черновик" in (v.get("desc") or "").lower())
 except Exception:
     _n_drafts = -1
 try:
-    _n_recs = sum(1 for v in _kb_obj.get("classes", _kb_obj).values() if v.get("recommendations"))
+    _n_recs = sum(1 for v in kb.get("classes", kb).values() if v.get("recommendations"))
 except Exception as _e:
     _n_recs = f'ERR {_e!r}'
 st.sidebar.caption(f"KB-версия: {_kb_md5} • черновиков: {_n_drafts} • рекомендаций: {_n_recs}")
