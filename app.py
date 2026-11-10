@@ -329,17 +329,20 @@ _FOLLOW_EXCLUDE = {
     "белок": ["реактивный"],
 }
 
-def _parse_lab_text(text):
-    t = text.lower().replace("ё", "е").replace(",", ".")
+_URINE_KEYWORDS = ["общий анализ мочи", "анализ мочи", "оам", "моча:"]
+_PCT_CELLS = ("нейтрофилы", "лимфоциты", "эозинофилы")
+
+def _parse_region(t, names):
     found = {}
     _pct = {}
-    for name, p in _PARAMS.items():
+    for name in names:
+        p = _PARAMS[name]
         for alias in p["aliases"]:
             a = alias.lower().replace("ё", "е")
             for m in _lre.finditer(_lre.escape(a) + r"[^\d\-]{0,25}(\d+(?:\.\d+)?)", t):
                 ns_, ne_ = m.start(1), m.end(1)
                 if ns_ > 0 and t[ns_ - 1] == "(":
-                    continue  # число — часть кода метода в скобках, не значение
+                    continue
                 gap = t[m.start() + len(a): ns_]
                 prev_words = t[:m.start()].split()
                 prev = prev_words[-1].strip(",;:()") if prev_words else ""
@@ -347,10 +350,14 @@ def _parse_lab_text(text):
                     continue
                 try: v = float(m.group(1))
                 except ValueError: continue
-                if not (0.01 * p["low"] < v < 100 * (p.get("high") or 1)):
-                    continue
-                if t[ne_:ne_ + 3].lstrip().startswith("%") and name in ("нейтрофилы", "лимфоциты", "эозинофилы"):
-                    _pct[name] = v  # проценты: конвертируем в абсолют после цикла
+                if p["low"] > 0:
+                    if not (0.01 * p["low"] < v < 100 * (p.get("high") or 1)):
+                        continue
+                else:
+                    if not (0 <= v <= 100 * (p.get("high") or 1)):
+                        continue
+                if t[ne_:ne_ + 3].lstrip().startswith("%") and name in _PCT_CELLS:
+                    _pct[name] = v
                     break
                 found[name] = v
                 break
@@ -360,6 +367,29 @@ def _parse_lab_text(text):
         if found.get("лейкоциты"):
             found[cell] = round(pc / 100.0 * found["лейкоциты"], 1)
     return found
+
+def _parse_lab_text(text):
+    t = text.lower().replace("ё", "е").replace(",", ".")
+    urine_names = [n for n, p in _PARAMS.items() if p.get("urine")]
+    blood_names = [n for n, p in _PARAMS.items() if not p.get("urine")]
+    idx = None
+    for kw in _URINE_KEYWORDS:
+        j = t.find(kw)
+        if j >= 0:
+            idx = j
+            break
+    if idx is None:
+        return _parse_region(t, blood_names)
+    res = _parse_region(t[:idx], blood_names)
+    u = _parse_region(t[idx:], urine_names)
+    if "нитриты" not in u:
+        k = t[idx:].find("нитрит")
+        if k >= 0:
+            tail = t[idx + k: idx + k + 60]
+            if any(w in tail for w in ("положител", "positive", "пол.")):
+                u["нитриты"] = 1.0
+    res.update(u)
+    return res
 
 with tab2:
     st.header("🧪 Анализы")
