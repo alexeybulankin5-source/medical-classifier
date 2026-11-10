@@ -315,31 +315,39 @@ _FOLLOW_EXCLUDE = {
     "гемоглобин": ["гликированный", "a1c"],
     "билирубин": ["прямой", "непрямой", "связанный", "несвязанный"],
     "холестерин": ["лпнп", "лпвп"],
-}
-
-_FOLLOW_EXCLUDE = {
-    "гемоглобин": ["гликированный", "a1c"],
-    "билирубин": ["прямой", "непрямой", "связанный", "несвязанный"],
-    "холестерин": ["лпнп", "лпвп"],
+    "белок": ["реактивный"],
 }
 
 def _parse_lab_text(text):
     t = text.lower().replace("ё", "е").replace(",", ".")
     found = {}
+    _pct = {}
     for name, p in _PARAMS.items():
         for alias in p["aliases"]:
             a = alias.lower().replace("ё", "е")
             for m in _lre.finditer(_lre.escape(a) + r"[^\d\-]{0,25}(\d+(?:\.\d+)?)", t):
-                gap = t[m.start() + len(a): m.start(1)]
+                ns_, ne_ = m.start(1), m.end(1)
+                if ns_ > 0 and t[ns_ - 1] == "(":
+                    continue  # число — часть кода метода в скобках, не значение
+                gap = t[m.start() + len(a): ns_]
                 prev_words = t[:m.start()].split()
                 prev = prev_words[-1].strip(",;:()") if prev_words else ""
-                if any(w in gap or w == prev for w in _FOLLOW_EXCLUDE.get(a, [])):
+                if any(w in gap or w in prev for w in _FOLLOW_EXCLUDE.get(a, [])):
                     continue
                 try: v = float(m.group(1))
                 except ValueError: continue
-                if 0.01 * p["low"] < v < 100 * (p.get("high") or 1):
-                    found[name] = v
+                if not (0.01 * p["low"] < v < 100 * (p.get("high") or 1)):
+                    continue
+                if t[ne_:ne_ + 3].lstrip().startswith("%") and name in ("нейтрофилы", "лимфоциты", "эозинофилы"):
+                    _pct[name] = v  # проценты: конвертируем в абсолют после цикла
+                    break
+                found[name] = v
                 break
+            if name in found or name in _pct:
+                break
+    for cell, pc in _pct.items():
+        if found.get("лейкоциты"):
+            found[cell] = round(pc / 100.0 * found["лейкоциты"], 1)
     return found
 
 with tab2:
