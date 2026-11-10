@@ -51,7 +51,11 @@ try:
                     if "черновик" in (v.get("desc") or "").lower())
 except Exception:
     _n_drafts = -1
-st.sidebar.caption(f"KB-версия: {_kb_md5} • черновиков: {_n_drafts}")
+try:
+    _n_recs = sum(1 for v in _kb_obj.get("classes", _kb_obj).values() if v.get("recommendations"))
+except Exception:
+    _n_recs = -1
+st.sidebar.caption(f"KB-версия: {_kb_md5} • черновиков: {_n_drafts} • рекомендаций: {_n_recs}")
 
 # --- ДИСАМБИГУАЦИЯ ДАВЛЕНИЯ (правило сильнее сходств) ---
 import re as _re
