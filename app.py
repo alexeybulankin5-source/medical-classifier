@@ -256,12 +256,17 @@ try:
 except Exception as _le:
     _LAB_READY, _LAB_ERR = False, str(_le)
 
-def _lab_facts(values):
+def _norm_range(p, sex):
+    n = p.get("norms", {}).get(sex)
+    return (n[0], n[1]) if n else (p["low"], p["high"])
+
+def _lab_facts(values, sex="ж"):
     f = {}
     for name, p in _PARAMS.items():
         if values.get(name) is None: continue
         v = values[name]
-        f[name] = "low" if v < p["low"] else ("high" if v > p["high"] else "normal")
+        lo, hi = _norm_range(p, sex)
+        f[name] = "low" if v < lo else ("high" if v > hi else "normal")
     return f
 
 def _lab_match_signs(f, values):
@@ -307,6 +312,8 @@ with tab2:
     if not _LAB_READY:
         st.error(f"Лабораторная база недоступна: {_LAB_ERR}")
     else:
+        sex = st.radio("Пол для нормативов", ["ж", "м"], horizontal=True,
+                       format_func=lambda s: "женский" if s == "ж" else "мужской")
         user_text = st.text_area("Текст анализа (скопируйте из бланка):", height=140)
         uploaded_file = st.file_uploader("Или загрузите файл (PDF, JPG, PNG, TXT)",
                                          type=["pdf", "jpg", "jpeg", "png", "txt"])
@@ -348,12 +355,13 @@ with tab2:
                     st.info("Показателей не распознано. Формат: «гемоглобин 90», «ТТГ 8.5», «сахар крови 6.1».")
                 else:
                     st.markdown("### 📋 Расшифровка показателей")
-                    f = _lab_facts(values)
+                    f = _lab_facts(values, sex)
                     vd = {"low": "ниже нормы", "high": "выше нормы", "normal": "в норме"}
                     for name, v in values.items():
                         p = _PARAMS[name]
                         mark = {"low": "🔻", "high": "🔺", "normal": "✅"}[f[name]]
-                        st.markdown(f"- {mark} **{name}: {v} {p['unit']}** — {vd[f[name]]} (норма {p['low']}–{p['high']})")
+                        lo, hi = _norm_range(p, sex)
+                        st.markdown(f"- {mark} **{name}: {v} {p['unit']}** — {vd[f[name]]} (норма {lo}–{hi})")
 
                     crit = []
                     for name, v in values.items():
