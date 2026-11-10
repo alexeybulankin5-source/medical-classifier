@@ -281,7 +281,14 @@ def _norm_range(p, sex):
     n = p.get("norms", {}).get(sex)
     return (n[0], n[1]) if n else (p["low"], p["high"])
 
-def _lab_facts(values, sex="ж"):
+def _egfr(creat_mmol, sex, age):
+    scr = creat_mmol / 88.4
+    k, alpha, mult = (0.7, -0.241, 1.012) if sex == "ж" else (0.9, -0.302, 1.0)
+    return 142 * (min(scr / k, 1.0) ** alpha) * (max(scr / k, 1.0) ** (-1.200)) * (0.9938 ** age) * mult
+
+def _lab_facts(values, sex="ж", age=None):
+    if values.get("креатинин") and age:
+        values["СКФ"] = round(_egfr(values["креатинин"], sex, age))
     f = {}
     for name, p in _PARAMS.items():
         if values.get(name) is None: continue
@@ -297,12 +304,16 @@ def _lab_match_signs(f, values):
         if not signs: continue
         ok = True
         for param, want in signs:
-            if param == "глюкоза":
-                v = values.get("глюкоза")
+            if param in ("глюкоза", "гликированный гемоглобин"):
+                v = values.get(param)
                 if v is None: ok = False
-                elif want == "high_moderate" and not (5.6 <= v <= 6.9): ok = False
-                elif want == "high_severe" and not (v >= 7.0): ok = False
-                elif want == "low" and not (v < 3.3): ok = False
+                elif want == "high_moderate":
+                    lo, hi = ((5.6, 6.9) if param == "глюкоза" else (5.7, 6.4))
+                    if not (lo <= v <= hi): ok = False
+                elif want == "high_severe":
+                    if not (v >= (7.0 if param == "глюкоза" else 6.5)): ok = False
+                elif want == "low":
+                    if not (v < 3.3): ok = False
             elif param not in values: ok = False
             elif param == "ферритин" and want == "normal_or_high":
                 if f.get(param) not in ("normal", "high"): ok = False
@@ -359,6 +370,7 @@ with tab2:
     else:
         sex = st.radio("Пол для нормативов", ["ж", "м"], horizontal=True,
                        format_func=lambda s: "женский" if s == "ж" else "мужской")
+        age = st.number_input("Возраст (нужен для расчёта СКФ)", min_value=14, max_value=120, value=40)
         user_text = st.text_area("Текст анализа (скопируйте из бланка):", height=140)
         uploaded_file = st.file_uploader("Или загрузите файл (PDF, JPG, PNG, TXT)",
                                          type=["pdf", "jpg", "jpeg", "png", "txt"])
@@ -400,7 +412,7 @@ with tab2:
                     st.info("Показателей не распознано. Формат: «гемоглобин 90», «ТТГ 8.5», «сахар крови 6.1».")
                 else:
                     st.markdown("### 📋 Расшифровка показателей")
-                    f = _lab_facts(values, sex)
+                    f = _lab_facts(values, sex, age)
                     vd = {"low": "ниже нормы", "high": "выше нормы", "normal": "в норме"}
                     for name, v in values.items():
                         p = _PARAMS[name]
