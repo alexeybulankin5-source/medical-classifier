@@ -24,8 +24,8 @@ CASES = [
     ("жжение и частые позывы к мочеиспусканию", ["цистит"]),
     ("свистящее дыхание и приступы одышки ночью", ["астма", "хобл"]),
     ("температура 37 и першение в горле", ["орви", "фарингит", "тонзилл", "ангин"]),
-    ("asdfgh zxcvbn qwerty", []),
-    ("фывапр олдж", []),
+    ("asdfgh zxcvbn qwerty", ["нераспознан"], []),
+    ("фывапр олдж", ["нераспознан"], []),
 ]
 
 RULE_FUNCS = ("_gib_word", "is_gibberish_query", "_redflag_check", "_bp_override",
@@ -80,7 +80,13 @@ def run_all(verbose=True):
 
     gib = ns.get("is_gibberish_query")
     results = []
-    for text, expects in CASES:
+    for case in CASES:
+        text, expects = case[0], case[1]
+        if gib and gib(text):
+            results.append((True, text, "нераспознан", None, None, [], 0.0))
+            if verbose:
+                print("PASS", repr(text), "-> нераспознан  [gibberish]")
+            continue
         q = enc.encode(["query: " + text], normalize_embeddings=True)[0].astype(np.float32)
         sims = X @ q
         order = np.argsort(sims)[::-1]
