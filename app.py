@@ -188,6 +188,18 @@ def log_unknown_query(query: str):
         return False
     return False
 
+import re as _are
+
+def _allergy_override(text, top5):
+    """Отёк губ/лица/языка/глотки — приоритет отёку Квинке, а не "заедам" по слову губы."""
+    t = text.lower().replace("ё", "е")
+    sw = _are.search(r"(опух|припух|распух|отек)", t)
+    zone = _are.search(r"(губ|язык|лица|лицо|глот|горл|век)", t)
+    if not (sw and zone):
+        return None
+    cand = [c for c in CLASS_NAMES if "квинке" in c.lower().replace("ё", "е")]
+    return cand[0] if cand else None
+
 # --- ИНТЕРФЕЙС ПРИЛОЖЕНИЯ ---
 st.title("🩺 MedBot Duo")
 st.markdown("Интеллектуальная система первичной диагностики")
@@ -209,7 +221,7 @@ def _load_rag_e5():
     from sentence_transformers import SentenceTransformer
     return SentenceTransformer("intfloat/multilingual-e5-small")
 
-def _rag_hits(text, k=2, thresh=0.75):
+def _rag_hits(text, k=2, thresh=0.85):
     if not _RAG_READY:
         return []
     try:
@@ -244,6 +256,8 @@ with tab1:
                     _override, _redflag_missing = _redflag_check(user_input, top5)
                     if not _override:
                         _override = _bp_override(user_input, top5)
+                        if not _override:
+                            _override = _allergy_override(user_input, top5)
                     if _override and _override != found_class_id:
                         best_idx = CLASS_NAMES.index(_override)
                         best_score = sims[best_idx]
