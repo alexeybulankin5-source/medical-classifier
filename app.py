@@ -192,7 +192,7 @@ def log_unknown_query(query: str):
 st.title("🩺 MedBot Duo")
 st.markdown("Интеллектуальная система первичной диагностики")
 
-tab1, tab2, tab3 = st.tabs(["📝 Жалобы", "🧪 Анализы", "📊 Аналитика"])
+tab1, tab2, tab3, tab4, tab5 = st.tabs(["📝 Жалобы", "🧪 Анализы", "🦴 Снимки (рентген)", "📈 ЭКГ", "📊 Аналитика"])
 
 with tab1:
     st.header("📝 Анализ жалоб")
@@ -584,6 +584,114 @@ with tab2:
                         st.caption("Отчёт для врача сейчас недоступен")
 
                     st.caption("Расшифровка носит информационный характер и не заменяет консультацию врача: анализы интерпретируются вместе с жалобами и осмотром.")
+# ==== Слой расшифровки снимков и ЭКГ (волна 9) ====
+try:
+    _xray_kb = _lj.load(open("xray_knowledge.json", encoding="utf-8"))
+    _ecg_kb = _lj.load(open("ecg_knowledge.json", encoding="utf-8"))
+    _xr_e = _lnp.load("xray_embeddings.npz", allow_pickle=True)
+    _ecg_e = _lnp.load("ecg_embeddings.npz", allow_pickle=True)
+    _xr_X = _xr_e["embeddings"].astype(_lnp.float32)
+    _xr_X /= (_lnp.linalg.norm(_xr_X, axis=1, keepdims=True) + 1e-9)
+    _xr_names = [str(x) for x in _xr_e["names"]]
+    _ecg_X = _ecg_e["embeddings"].astype(_lnp.float32)
+    _ecg_X /= (_lnp.linalg.norm(_ecg_X, axis=1, keepdims=True) + 1e-9)
+    _ecg_names = [str(x) for x in _ecg_e["names"]]
+    _scan_ready = True
+except Exception:
+    _scan_ready = False
+
+_SCAN_ICON = {"critical": "🚨", "urgent": "⚠️", "watch": "ℹ️", "normal": "✅"}
+_SCAN_ORDER = {"critical": 0, "urgent": 1, "watch": 2, "normal": 3}
+
+def _scan_match(t, kb, X, names):
+    t2 = t.lower().replace("ё", "е")
+    det = []
+    for term, entry in kb.items():
+        if any(n in t2 for n in entry.get("negative", [])):
+            continue
+        for a in entry.get("aliases", []):
+            if a.lower() in t2:
+                det.append(term)
+                break
+    sem = []
+    if not det and X is not None:
+        try:
+            q = _load_lab_e5().encode(["query: " + t[:400]], normalize_embeddings=True)[0].astype(_lnp.float32)
+            sims = X @ q
+            order = _lnp.argsort(sims)[::-1][:3]
+            sem = [names[k] for k in order if float(sims[k]) >= 0.80]
+        except Exception:
+            sem = []
+    det.sort(key=lambda x: _SCAN_ORDER.get(kb[x].get("urgency"), 4))
+    return det, sem
+
+def _scan_hr(t):
+    m = _lre.search(r"ч\s*с\s*с[^\d]{0,10}(\d{2,3})", t.lower())
+    if not m:
+        m = _lre.search(r"пульс[^\d]{0,10}(\d{2,3})", t.lower())
+    return int(m.group(1)) if m else None
+
+with tab4:
+    st.markdown("### 🦴 Расшифровка заключения рентгена")
+    st.caption("Вставьте текст заключения рентгенолога — поясню каждое понятие простыми словами. Сам снимок модель не читает: интерпретирует только врач.")
+    xtxt = st.text_area("Заключение рентгена", height=140, key="xray_in")
+    if st.button("Расшифровать", key="xray_btn"):
+        if not xtxt.strip():
+            st.info("Вставьте текст заключения.")
+        elif not _scan_ready:
+            st.error("Файлы базы снимков не найдены: xray_knowledge.json / xray_embeddings.npz")
+        else:
+            det, sem = _scan_match(xtxt, _xray_kb, _xr_X, _xr_names)
+            crit = [d for d in det if _xray_kb[d].get("urgency") == "critical"]
+            urg = [d for d in det if _xray_kb[d].get("urgency") == "urgent"]
+            if crit:
+                st.error("🚨 **Требуется медицинская помощь сейчас:** " + "; ".join(crit))
+            if urg:
+                st.warning("⚠️ **Обратитесь к врачу в ближайшие дни, не откладывая:** " + "; ".join(urg))
+            for term in det:
+                if term in crit or term in urg:
+                    continue
+                u = _xray_kb[term].get("urgency")
+                st.markdown(f"{_SCAN_ICON.get(u, 'ℹ️')} **{term}** — {_xray_kb[term]['desc']}")
+            if sem:
+                st.caption("Возможно, речь о: " + ", ".join(sem))
+            if not det and not sem:
+                st.info("Знакомых формулировок не нашёл. Пришлите заключение как есть — постараюсь распознать термины.")
+
+with tab5:
+    st.markdown("### 📈 Расшифровка ЭКГ")
+    st.caption("Вставьте заключение ЭКГ — поясню термины простыми словами. ЭКГ фиксирует один момент записи; оценивает её лечащий врач.")
+    etxt = st.text_area("Заключение ЭКГ", height=140, key="ecg_in")
+    if st.button("Расшифровать", key="ecg_btn"):
+        if not etxt.strip():
+            st.info("Вставьте текст заключения.")
+        elif not _scan_ready:
+            st.error("Файлы базы не найдены: ecg_knowledge.json / ecg_embeddings.npz")
+        else:
+            hr = _scan_hr(etxt)
+            if hr is not None:
+                if hr < 50:
+                    st.warning(f"⚠️ **ЧСС {hr}** — редкий пульс. Часто норма у тренированных; при слабости и головокружениях — к кардиологу.")
+                elif hr > 90:
+                    st.warning(f"⚠️ **ЧСС {hr}** — учащённый пульс. Причины: нагрузка, температура, анемия, щитовидная железа. Постоянная тахикардия — повод для обследования.")
+                else:
+                    st.success(f"✅ **ЧСС {hr}** — в обычном диапазоне (50–90).")
+            det, sem = _scan_match(etxt, _ecg_kb, _ecg_X, _ecg_names)
+            crit = [d for d in det if _ecg_kb[d].get("urgency") == "critical"]
+            urg = [d for d in det if _ecg_kb[d].get("urgency") == "urgent"]
+            if crit:
+                st.error("🚨 **Требуется медицинская помощь сейчас:** " + "; ".join(crit))
+            if urg:
+                st.warning("⚠️ **Обратитесь к врачу в ближайшие дни:** " + "; ".join(urg))
+            for term in det:
+                if term in crit or term in urg:
+                    continue
+                u = _ecg_kb[term].get("urgency")
+                st.markdown(f"{_SCAN_ICON.get(u, 'ℹ️')} **{term}** — {_ecg_kb[term]['desc']}")
+            if sem:
+                st.caption("Возможно, речь о: " + ", ".join(sem))
+            if not det and not sem:
+                st.info("Знакомых формулировок не нашёл. Пришлите заключение как есть — постараюсь распознать термины.")
 
 with tab3:
     st.header("📊 Аналитика")
