@@ -192,6 +192,34 @@ def log_unknown_query(query: str):
 st.title("🩺 MedBot Duo")
 st.markdown("Интеллектуальная система первичной диагностики")
 
+# ==== RAG-слой источников (волна 10) ====
+import json as _rj, numpy as _rnp
+try:
+    _rag_kb = _rj.load(open("rag_knowledge.json", encoding="utf-8"))
+    _rag_e = _rnp.load("rag_embeddings.npz", allow_pickle=True)
+    _rag_X = _rag_e["embeddings"].astype(_rnp.float32)
+    _rag_X /= (_rnp.linalg.norm(_rag_X, axis=1, keepdims=True) + 1e-9)
+    _rag_names = [str(x) for x in _rag_e["names"]]
+    _RAG_READY = True
+except Exception:
+    _RAG_READY = False
+
+@st.cache_resource
+def _load_rag_e5():
+    from sentence_transformers import SentenceTransformer
+    return SentenceTransformer("intfloat/multilingual-e5-small")
+
+def _rag_hits(text, k=2, thresh=0.75):
+    if not _RAG_READY:
+        return []
+    try:
+        q = _load_rag_e5().encode(["query: " + text[:500]], normalize_embeddings=True)[0].astype(_rnp.float32)
+        sr = _rag_X @ q
+        order = _rnp.argsort(sr)[::-1][:k]
+        return [(_rag_names[j], float(sr[j])) for j in order if float(sr[j]) >= thresh]
+    except Exception:
+        return []
+
 tab1, tab2, tab3, tab4, tab5 = st.tabs(["📝 Жалобы", "🧪 Анализы", "🦴 Снимки (рентген)", "📈 ЭКГ", "📊 Аналитика"])
 
 with tab1:
@@ -287,6 +315,30 @@ with tab1:
                         elif urgency == 'doctor_visit':
                             st.info("ℹ️ Рекомендуется плановая консультация врача для подтверждения диагноза.")
 
+                        # --- Почему такой вывод (объяснимость, волна 10) ---
+                        with st.expander("🧭 Почему такой вывод"):
+                            st.markdown(f"- Запрос распознан как **{found_class_id}**, сходство **{best_score:.2f}**; порог показа диагноза — 0.65")
+                            _pairs = [(c, float(sims[CLASS_NAMES.index(c)])) for c in top5]
+                            st.markdown("- Топ-5 кандидатов: " + "; ".join(f"{c} ({s:.2f})" for c, s in _pairs))
+                            if _override:
+                                st.markdown(f"- Сработало правило красных флагов: гипотеза скорректирована на **{_override}**")
+                            if _redflag_missing:
+                                st.markdown(f"- Сработал краснофлаг-предупреждение: {_redflag_missing}")
+                            if is_gibberish_query(user_input):
+                                st.markdown("- Сработал гейт тарабарщины: уверенность обнулена")
+                        
+                        # --- Что говорят источники (RAG, волна 10) ---
+                        _src_hits = _rag_hits(user_input + " " + found_class_id)
+                        if _src_hits:
+                            st.markdown("**📚 Что говорят источники:**")
+                            for _sn, _sc in _src_hits:
+                                _ru = _rag_kb[_sn]["url"]
+                                _rd = _rag_kb[_sn]["desc"][:180]
+                                st.markdown(f"- [{_sn}]({_ru}) — {_rd}")
+                            st.caption("Ссылки ведут на клинические рекомендации и справочники; окончательную оценку делает врач.")
+                        
+                        st.session_state["last_dx"] = {"text": user_input, "dx": found_class_id, "score": round(float(best_score), 2), "top5": list(top5)}
+                        
                         st.markdown("---")
                         st.caption(f"Уверенность модели: {best_score:.2f}")
 
@@ -715,6 +767,37 @@ with tab5:
                         st.rerun()
                 else:
                     st.success("Журнал неизвестных запросов пуст.")
+                    # --- Отчёт для врача (волна 10) ---
+                    with st.expander("📄 Отчёт для врача"):
+                        _parts = []
+                        _dx = st.session_state.get("last_dx")
+                        if _dx:
+                            _parts.append("## Жалобы")
+                            _parts.append("Текст: " + str(_dx.get("text", "")))
+                            _parts.append("Гипотеза: " + str(_dx.get("dx", "")) + " (сходство " + str(_dx.get("score", "")) + ")")
+                            _parts.append("Топ-5 кандидатов: " + ", ".join(map(str, _dx.get("top5", []))))
+                        _lc = st.session_state.get("lab_context")
+                        if _lc:
+                            _parts.append("## Анализы")
+                            _lv = _lc.get("values", {})
+                            if _lv:
+                                _parts.append("Показатели: " + "; ".join(str(k) + " = " + str(v) for k, v in _lv.items()))
+                            if _lc.get("patterns"):
+                                _parts.append("Паттерны: " + ", ".join(map(str, _lc.get("patterns", []))))
+                        _xt = st.session_state.get("xray_in") or ""
+                        if _xt.strip():
+                            _parts.append("## Заключение рентгена")
+                            _parts.append(_xt)
+                        _et = st.session_state.get("ecg_in") or ""
+                        if _et.strip():
+                            _parts.append("## Заключение ЭКГ")
+                            _parts.append(_et)
+                        if _parts:
+                            _rep = "# Отчёт для врача (MedBot Duo)" + chr(10) + chr(10) + chr(10).join(_parts) + chr(10)
+                            st.download_button("⬇️ Скачать отчёт (Markdown)", data=_rep, file_name="otchet_dlya_vracha.md", mime="text/markdown", key="doc_report_btn")
+                        else:
+                            st.caption("Отчёт появится после разбора жалоб или анализов в этой сессии.")
+                    
                     if st.session_state.get("unknown_log"):
                         st.download_button("⬇️ Скачать лог текущей сессии", data=chr(10).join(st.session_state["unknown_log"]) + chr(10), file_name="unknown_queries_session.txt", mime="text/plain")
             else:
