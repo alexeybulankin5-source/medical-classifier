@@ -189,6 +189,16 @@ with tab1:
                         
                         st.subheader(f"Возможный диагноз: {found_class_id}")
                         st.write(diagnosis_text)
+                        _lctx = st.session_state.get("lab_context")
+                        if _lctx:
+                            _pats = _lctx.get("patterns", [])
+                            _vals = _lctx.get("values", {})
+                            if _pats:
+                                st.info("🧪 В разобранных анализах найдено: " + ", ".join(_pats) +
+                                        ". Это дополняет картину по жалобам — при оценке диагноза учитывайте оба источника.")
+                            elif _vals:
+                                st.info("🧪 Ранее разобран бланк анализов (явных паттернов не найдено). Показатели: " +
+                                        ", ".join(sorted(_vals))[:300] + ".")
 
                         # --- Вывод рекомендаций (фолбэк на шаги подтверждения из KB) ---
                         recommendations = data.get('recommendations') or data.get('confirm') or []
@@ -468,6 +478,11 @@ with tab2:
                         best = int(_lnp.argmax(sims))
                         if sims[best] >= 0.85:
                             hits = [_LAB_NAMES[best]]
+
+                    st.session_state["lab_context"] = {
+                        "patterns": list(hits),
+                        "values": dict(values),
+                    }
 
                     if hits:
                         st.markdown("### 🔎 Возможные паттерны")
