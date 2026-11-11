@@ -144,6 +144,7 @@ def log_unknown_query(query: str):
                 os.makedirs(os.path.dirname(LOG_PATH), exist_ok=True)
                 with open(LOG_PATH, 'a', encoding='utf-8') as f:
                     f.write(f"{query}\n")
+                st.session_state.setdefault("unknown_log", []).append(query)
                 return True
             except Exception as e:
                 print(f"Ошибка записи: {e}")
@@ -562,11 +563,16 @@ with tab3:
                 if logs:
                     st.text_area("Запросы, которые система не смогла распознать:",
                                  value="".join(logs), height=300)
+                    _dl_all = list(dict.fromkeys([l.rstrip() for l in logs] + st.session_state.get("unknown_log", [])))
+                    if _dl_all:
+                        st.download_button("⬇️ Скачать лог запросов (файл + текущая сессия)", data=chr(10).join(_dl_all) + chr(10), file_name="unknown_queries_backup.txt", mime="text/plain")
                     if st.button("Очистить журнал"):
                         open(LOG_PATH, "w", encoding="utf-8").close()
                         st.rerun()
                 else:
                     st.success("Журнал неизвестных запросов пуст.")
+                    if st.session_state.get("unknown_log"):
+                        st.download_button("⬇️ Скачать лог текущей сессии", data=chr(10).join(st.session_state["unknown_log"]) + chr(10), file_name="unknown_queries_session.txt", mime="text/plain")
             else:
                 st.info("Журнал неизвестных запросов еще не создан.")
         except Exception as e:
