@@ -60,6 +60,24 @@ st.sidebar.caption(f"KB-версия: {_kb_md5} • черновиков: {_n_dr
 
 # --- ДИСАМБИГУАЦИЯ ДАВЛЕНИЯ (правило сильнее сходств) ---
 import re as _re
+_CONS = "бвгджзклмнпрстфхцчшщ"
+_RUN4 = _re.compile("[" + _CONS + "]{4,}")
+_RUN3 = _re.compile("[" + _CONS + "]{3}")
+
+def _gib_word(w):
+    if _RUN4.search(w):
+        return True
+    m = _RUN3.search(w)
+    if m:
+        cons = sum(1 for c in w if c in _CONS)
+        return cons / len(w) >= 0.75
+    return False
+
+def is_gibberish_query(t):
+    words = _re.findall(r"[а-яёa-z]{3,}", t.lower())
+    if not words:
+        return True
+    return all(_gib_word(w) for w in words)
 def _bp_override(text, top_names):
     t = text.lower()
     m = _re.search(r"(\d{2,3})\s*(?:на|/|–|-)\s*(\d{2,3})", t)
@@ -104,6 +122,10 @@ _REDFLAG_RULES = [
      ["кровохарканье", "боль при вдохе", "посинели губ", "синие губы", "обморок",
       "после операции", "после перелёта", "после перелета", "долго лежал", "долго лежала"],
      "тромбоэмболия лёгочной артерии"),
+    (["задержка", "задержки", "нет месячных", "месячных нет",
+      "не пришли месячные", "задержка месячных"],
+     ["живот", "боли", "боль", "болит", "внизу", "тянет", "кровянист", "мажет"],
+     "внематочная беременность"),
     (["справа внизу живота", "правая нижняя часть живота", "правый низ живота",
       "боль смещается в правую", "у пупка и смещается"],
      ["тошнит", "тошнота", "рвота", "температур", "нет аппетита"],
@@ -122,18 +144,30 @@ _REDFLAG_RULES = [
 ]
 def _redflag_check(text, top_names):
     t = text.lower()
+    warn = None
     for req, extra, target in _REDFLAG_RULES:
         if any(w in t for w in req) and (not extra or any(w in t for w in extra)):
             if target in top_names:
                 return target, None
-            return None, target   # класс вне топ-5 — только предупреждение
-    return None, None
+            if warn is None:
+                warn = target
+    return None, warn
 
 
 # --- ЛОГИРОВАНИЕ НЕИЗВЕСТНЫХ ЗАПРОСОВ ---
 def log_unknown_query(query: str):
     if not query.strip(): 
         return False
+    if is_gibberish_query(query):
+        try:
+            os.makedirs(os.path.dirname(LOG_PATH), exist_ok=True)
+            with open(LOG_PATH, 'a', encoding='utf-8') as f:
+                f.write("[gibberish] " + query + chr(10))
+            st.session_state.setdefault("unknown_log", []).append("[gibberish] " + query)
+            return True
+        except Exception as e:
+            print(f"Ошибка записи: {e}")
+            return False
     
     try:
         user_emb = encoder.encode(["query: " + query])[0]
@@ -174,6 +208,8 @@ with tab1:
                     
                     best_idx = np.argmax(sims)
                     best_score = sims[best_idx]
+                    if is_gibberish_query(user_input):
+                        best_score = 0.0
                     found_class_id = CLASS_NAMES[best_idx]
 
                     top5 = [CLASS_NAMES[i] for i in np.argsort(sims)[::-1][:5]]
