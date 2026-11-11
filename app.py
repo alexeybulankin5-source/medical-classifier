@@ -62,8 +62,9 @@ st.sidebar.caption(f"KB-версия: {_kb_md5} • классов: {_n_cls} •
 
 # --- ДИСАМБИГУАЦИЯ ДАВЛЕНИЯ (правило сильнее сходств) ---
 import re as _re
-_CONS = "бвгджзклмнпрстфхцчшщ"
+_CONS = "бвгджзклмнпрстфхцчшщbcdfghjklmnpqrstvwxz"
 _RUN4 = _re.compile("[" + _CONS + "]{4,}")
+_KEYBOARD_ROWS = ("qwertyuiop", "asdfghjkl", "zxcvbnm", "йцукенгшщзхъ", "фывапролдж", "ячсмитьбю")
 _RUN3 = _re.compile("[" + _CONS + "]{3}")
 
 def _gib_word(w):
@@ -72,7 +73,12 @@ def _gib_word(w):
     m = _RUN3.search(w)
     if m:
         cons = sum(1 for c in w if c in _CONS)
-        return cons / len(w) >= 0.75
+        if cons / len(w) >= 0.75:
+            return True
+    wl = w.lower()
+    for row in _KEYBOARD_ROWS:
+        if len(wl) >= 5 and all(c in row for c in wl):
+            return True
     return False
 
 def is_gibberish_query(t):
@@ -272,6 +278,77 @@ def _rag_hits(text, dx=None, k=2):
             break
     return [(h, 1.0) for h in hits]
 
+def _tiebreak_pick(sims, text):
+    """При ничьей argmax (разница < 0.01) предпочитаем класс, чьё имя дословно встречается в запросе."""
+    import re as _re2
+    order = np.argsort(np.asarray(sims))[::-1]
+    i0 = int(order[0])
+    if len(order) < 2 or float(sims[i0]) - float(sims[order[1]]) > 0.01:
+        return i0
+    toks = set(_re2.findall(r"[а-яёa-z]{4,}", (text or "").lower()))
+    best, best_hits = i0, -1
+    for i in order[:10]:
+        if float(sims[i0]) - float(sims[int(i)]) > 0.01:
+            break
+        nm = CLASS_NAMES[int(i)].lower()
+        hits = sum(1 for w in toks if w in nm)
+        if hits > best_hits:
+            best, best_hits = int(i), hits
+    return best
+
+
+def _tonsil_override(text, top5):
+    """Маркеры ангины сильнее сходства: миндалины и белый налёт -> тонзиллит/ангина."""
+    t = (text or "").lower().replace("ё", "е")
+    if not any(w in t for w in ("миндалин", "белый налет", "гнойные пробки", "пробки в горле", "налет на гландах", "гной в горле")):
+        return None
+    for c in top5:
+        cl = (c or "").lower()
+        if "тонзилл" in cl or "ангин" in cl:
+            return c
+    for c in CLASS_NAMES:
+        cl = (c or "").lower()
+        if "тонзилл" in cl or "ангин" in cl:
+            return c
+    return None
+
+
+def _symptom_override(text, top5):
+    """Симптомные маркеры сильнее сходства: мигрень, диабет, отёк Квинке."""
+    t = (text or "").lower().replace("ё", "е")
+
+    def pick(sub):
+        for c in top5:
+            if sub in (c or "").lower():
+                return c
+        for c in CLASS_NAMES:
+            if sub in (c or "").lower():
+                return c
+        return None
+
+    mig = sum(1 for w in ("половин", "с одной стороны", "односторонн", "светобоязн", "фотофобия", "пульсирующ") if w in t)
+    if mig >= 2:
+        c = pick("мигрень")
+        if c:
+            return c
+    diab = sum(1 for w in ("жажда", "полиури", "частое мочеиспускание", "много пью") if w in t)
+    if diab >= 2:
+        c = pick("диабет")
+        if c:
+            return c
+    swell = any(w in t for w in ("отек", "опухли", "распухли", "отекает"))
+    face = any(w in t for w in ("губ", "лиц", "язык", "гортан", "глотк"))
+    if swell and face:
+        c = pick("квинке")
+        if c:
+            return c
+    if any(w in t for w in ("понос", "диарея", "жидкий стул", "расстройство кишечника", "частый стул")):
+        c = pick("диарея") or pick("кишечная инфекция") or pick("гастроэнтерит")
+        if c:
+            return c
+    return None
+
+
 tab1, tab2, tab3, tab4, tab5 = st.tabs(["📝 Жалобы", "🧪 Анализы", "🦴 Снимки (рентген)", "📈 ЭКГ", "📊 Аналитика"])
 
 with tab1:
@@ -286,7 +363,7 @@ with tab1:
                     user_emb = encoder.encode(["query: " + user_input])[0]
                     sims = cosine_similarity([user_emb], CLASS_EMBEDDINGS)[0]
                     
-                    best_idx = np.argmax(sims)
+                    best_idx = _tiebreak_pick(sims, user_input)
                     best_score = sims[best_idx]
                     if is_gibberish_query(user_input):
                         best_score = 0.0
@@ -298,6 +375,10 @@ with tab1:
                         _override = _bp_override(user_input, top5)
                         if not _override:
                             _override = _allergy_override(user_input, top5)
+                            if not _override:
+                                _override = _tonsil_override(user_input, top5)
+                                if not _override:
+                                    _override = _symptom_override(user_input, top5)
                     if _override and _override != found_class_id:
                         best_idx = CLASS_NAMES.index(_override)
                         best_score = sims[best_idx]
