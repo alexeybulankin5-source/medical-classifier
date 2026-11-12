@@ -1,8 +1,27 @@
 
 import json
+import numpy as np
 import streamlit as st
+from sentence_transformers import SentenceTransformer
 
 kb = json.load(open("knowledge.json", encoding="utf-8-sig"))
+data = np.load("class_embeddings.npz", allow_pickle=True)
+E, names = data["embeddings"], list(data["names"])
+enc = SentenceTransformer("intfloat/multilingual-e5-small")
+
+RED_FLAGS = {"инфаркт миокарда", "стенокардия", "пневмоторакс", "тромбофлебит",
+             "тромбоз глубоких вен", "аппендицит", "менингит", "тромбоэмболия лёгочной артерии"}
+
+def classify(text, top=4):
+    q = enc.encode([f"query: {text}"], normalize_embeddings=True)[0].astype(np.float32)
+    order = np.argsort(-(E @ q))[:top]
+    return [(names[i], float(E[i] @ q)) for i in order]
+
+def get_recs(info):
+    recs = info.get("recommendations") or info.get("recommendation") or {}
+    if isinstance(recs, dict):
+        return recs.get("specialist", ""), recs.get("advice", recs.get("text", ""))
+    return "", str(recs)
 
 URG = {
     "норма":      ("✅", "Не требует действий"),
@@ -19,8 +38,7 @@ def render_findings(items, prefix):
     c1, c2 = st.columns([2, 3])
     urg_filter = c1.multiselect(
         "Показать по срочности:", list(URG), default=["срочно", "экстренно"],
-        format_func=lambda u: f"{URG[u][0]} {u}",
-        key=f"{prefix}_urg",
+        format_func=lambda u: f"{URG[u][0]} {u}", key=f"{prefix}_urg",
     )
     search = c2.text_input("Поиск:", placeholder="например: ST, пневмо, ритм",
                            key=f"{prefix}_search").strip().lower()
@@ -70,14 +88,10 @@ def render_findings(items, prefix):
                 continue
             with st.expander(rel):
                 st.write(info.get("description", "описание не заполнено"))
-                recs = info.get("recommendations") or info.get("recommendation") or []
-                if recs:
+                spec, advice = get_recs(info)
+                if advice:
                     st.markdown("🩺 **Рекомендации:**")
-                    if isinstance(recs, str):
-                        st.write(recs)
-                    else:
-                        for r in recs:
-                            st.write(f"• {r}")
+                    st.write(advice)
 
     st.markdown("### 🩺 Что делать")
     st.success(it["advice"])
@@ -90,6 +104,35 @@ st.title("🩺 MedBot Duo")
 tab_complaints, tab_analyses, tab_xray, tab_ecg = st.tabs(
     ["📝 Жалобы", "🧪 Анализы", "🦴 Рентген", "📈 ЭКГ"]
 )
+
+with tab_complaints:
+    st.caption("Опишите жалобы своими словами — система сопоставит их с базой знаний")
+    text = st.text_area("Жалобы:", placeholder="например: болит сердце и пот", key="complaint_text")
+    if st.button("Анализировать", key="complaint_btn") and text.strip():
+        results = classify(text)
+        best, sim = results[0]
+        info = kb.get(best, {})
+        st.markdown(f"### Возможный диагноз: **{best}**")
+        st.caption(f"Уверенность модели: {sim:.2f}")
+        st.write(info.get("description", "описание не заполнено"))
+        spec, advice = get_recs(info)
+        if spec:
+            st.markdown(f"🩺 **К какому врачу:** {spec}")
+        if advice:
+            st.markdown("🩺 **Рекомендации:**")
+            st.write(advice)
+        if len(results) > 1:
+            st.markdown("🔍 **Возможные альтернативные диагнозы:**")
+            for alt_name, alt_sim in results[1:]:
+                st.markdown(f"- {alt_name} — сходство {alt_sim:.2f}")
+        if best in RED_FLAGS:
+            st.error("🚨 Ваша жалоба может указывать на экстренное состояние. "
+                     "При выраженных симптомах не откладывайте — вызовите скорую помощь (103, 112).")
+        else:
+            st.info("ℹ️ Рекомендуется плановая консультация врача для подтверждения диагноза.")
+
+with tab_analyses:
+    st.caption("Раздел в разработке — здесь появится расшифровка анализов")
 
 with tab_xray:
     st.caption("16 типовых находок: от нормы до экстренных состояний")
