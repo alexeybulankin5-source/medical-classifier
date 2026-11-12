@@ -15,13 +15,15 @@ URG = {
 def load(fname):
     return json.load(open(fname, encoding="utf-8"))["items"]
 
-def render_findings(items):
+def render_findings(items, prefix):
     c1, c2 = st.columns([2, 3])
     urg_filter = c1.multiselect(
         "Показать по срочности:", list(URG), default=["срочно", "экстренно"],
         format_func=lambda u: f"{URG[u][0]} {u}",
+        key=f"{prefix}_urg",
     )
-    search = c2.text_input("Поиск:", placeholder="например: ST, пневмо, ритм").strip().lower()
+    search = c2.text_input("Поиск:", placeholder="например: ST, пневмо, ритм",
+                           key=f"{prefix}_search").strip().lower()
 
     visible = items
     if urg_filter:
@@ -44,6 +46,7 @@ def render_findings(items):
     pick = st.selectbox(
         "Заключение:", [i["finding"] for i in visible],
         format_func=lambda f: next(f"{URG[i['urgency']][0]} {f}" for i in visible if i["finding"] == f),
+        key=f"{prefix}_pick",
     )
     it = next(i for i in visible if i["finding"] == pick)
     emoji, label = URG[it["urgency"]]
@@ -90,8 +93,8 @@ tab_complaints, tab_analyses, tab_xray, tab_ecg = st.tabs(
 
 with tab_xray:
     st.caption("16 типовых находок: от нормы до экстренных состояний")
-    render_findings(load("xray_findings.json"))
+    render_findings(load("xray_findings.json"), prefix="xray")
 
 with tab_ecg:
     st.caption("20 типовых заключений: что они значат и насколько срочно")
-    render_findings(load("ecg_findings.json"))
+    render_findings(load("ecg_findings.json"), prefix="ecg")
