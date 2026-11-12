@@ -351,6 +351,85 @@ def _symptom_override(text, top5):
 
 tab1, tab2, tab3, tab4, tab5 = st.tabs(["📝 Жалобы", "🧪 Анализы", "🦴 Снимки (рентген)", "📈 ЭКГ", "📊 Аналитика"])
 
+
+# --- СПРАВОЧНИКИ: функции для вкладок рентген/ЭКГ ---
+URG_REF = {
+    "норма":      ("✅", "Не требует действий"),
+    "наблюдение": ("👀", "Наблюдение — при жалобах к врачу"),
+    "планово":    ("🗓", "Плановое обследование"),
+    "срочно":     ("⚠️", "Обратиться в ближайшие дни"),
+    "экстренно":  ("🚨", "Неотложная помощь"),
+}
+_KB = kb.get("classes", kb) if isinstance(kb, dict) else {}
+
+def _load_ref(fname):
+    return json.load(open(fname, encoding="utf-8"))["items"]
+
+def _get_recs(info):
+    recs = info.get("recommendations") or info.get("recommendation") or {}
+    if isinstance(recs, dict):
+        return recs.get("specialist", ""), recs.get("advice", recs.get("text", ""))
+    return "", str(recs)
+
+def render_findings_ref(items, prefix):
+    c1, c2 = st.columns([2, 3])
+    urg_filter = c1.multiselect(
+        "Показать по срочности:", list(URG_REF), default=["срочно", "экстренно"],
+        format_func=lambda u: f"{URG_REF[u][0]} {u}", key=f"{prefix}_urg",
+    )
+    search = c2.text_input("Поиск:", placeholder="например: ST, пневмо, ритм",
+                           key=f"{prefix}_search").strip().lower()
+    visible = items
+    if urg_filter:
+        visible = [i for i in visible if i["urgency"] in urg_filter]
+    if search:
+        visible = [i for i in visible if search in
+                   (i["finding"] + " " + i["picture"] + " " + i["means"]).lower()]
+    from collections import Counter
+    cnt = Counter(i["urgency"] for i in visible)
+    cols = st.columns(len(URG_REF))
+    for col, (u, (emoji, label)) in zip(cols, URG_REF.items()):
+        col.metric(f"{emoji} {u}", cnt.get(u, 0))
+    if not visible:
+        st.info("Ничего не найдено — ослабьте фильтры.")
+        return
+    st.divider()
+    pick = st.selectbox(
+        "Заключение:", [i["finding"] for i in visible],
+        format_func=lambda f: next(f"{URG_REF[i['urgency']][0]} {f}" for i in visible if i["finding"] == f),
+        key=f"{prefix}_pick",
+    )
+    it = next(i for i in visible if i["finding"] == pick)
+    emoji, label = URG_REF[it["urgency"]]
+    top = st.columns([1, 4])
+    top[0].markdown(f"<div style='font-size:52px;text-align:center'>{emoji}</div>", unsafe_allow_html=True)
+    with top[1]:
+        st.subheader(it["finding"])
+        st.markdown(f"**Срочность:** {label}")
+    st.markdown("### 🔬 Что видно на исследовании")
+    st.write(it["picture"])
+    st.markdown("### 🧠 Что это значит")
+    st.write(it["means"])
+    if it["related"]:
+        st.markdown("### 🔗 Связанные диагнозы из базы")
+        for rel in it["related"]:
+            info = _KB.get(rel) if isinstance(_KB, dict) else None
+            if not info:
+                continue
+            with st.expander(rel):
+                st.write(info.get("description") or info.get("desc") or "описание не заполнено")
+                _spec, _adv = _get_recs(info)
+                if _adv:
+                    st.markdown("🩺 **Рекомендации:**")
+                    st.write(_adv)
+    st.markdown("### 🩺 Что делать")
+    st.success(it["advice"])
+    if it["urgency"] == "экстренно":
+        st.error("🚨 Эти признаки требуют неотложной помощи. Не откладывайте — вызывайте скорую.")
+    elif it["urgency"] == "срочно":
+        st.warning("⚠️ Обратитесь к врачу в ближайшие дни — состояние требует контроля.")
+
+
 with tab1:
     st.header("📝 Анализ жалоб")
     user_input = st.text_area("Опишите жалобы:", height=150)
@@ -985,96 +1064,3 @@ with tab5:
         st.error(f"Ошибка отзывов: {e!s}")
 
 
-# --- СПРАВОЧНИКИ: ЭКГ и Рентген ---
-URG_REF = {
-    "норма":      ("✅", "Не требует действий"),
-    "наблюдение": ("👀", "Наблюдение — при жалобах к врачу"),
-    "планово":    ("🗓", "Плановое обследование"),
-    "срочно":     ("⚠️", "Обратиться в ближайшие дни"),
-    "экстренно":  ("🚨", "Неотложная помощь"),
-}
-
-_KB = kb.get("classes", kb) if isinstance(kb, dict) else {}
-
-def _load_ref(fname):
-    return json.load(open(fname, encoding="utf-8"))["items"]
-
-def _get_recs(info):
-    recs = info.get("recommendations") or info.get("recommendation") or {}
-    if isinstance(recs, dict):
-        return recs.get("specialist", ""), recs.get("advice", recs.get("text", ""))
-    return "", str(recs)
-
-def render_findings_ref(items, prefix):
-    c1, c2 = st.columns([2, 3])
-    urg_filter = c1.multiselect(
-        "Показать по срочности:", list(URG_REF), default=["срочно", "экстренно"],
-        format_func=lambda u: f"{URG_REF[u][0]} {u}", key=f"{prefix}_urg",
-    )
-    search = c2.text_input("Поиск:", placeholder="например: ST, пневмо, ритм",
-                           key=f"{prefix}_search").strip().lower()
-
-    visible = items
-    if urg_filter:
-        visible = [i for i in visible if i["urgency"] in urg_filter]
-    if search:
-        visible = [i for i in visible if search in
-                   (i["finding"] + " " + i["picture"] + " " + i["means"]).lower()]
-
-    from collections import Counter
-    cnt = Counter(i["urgency"] for i in visible)
-    cols = st.columns(len(URG_REF))
-    for col, (u, (emoji, label)) in zip(cols, URG_REF.items()):
-        col.metric(f"{emoji} {u}", cnt.get(u, 0))
-
-    if not visible:
-        st.info("Ничего не найдено — ослабьте фильтры.")
-        return
-
-    st.divider()
-    pick = st.selectbox(
-        "Заключение:", [i["finding"] for i in visible],
-        format_func=lambda f: next(f"{URG_REF[i['urgency']][0]} {f}" for i in visible if i["finding"] == f),
-        key=f"{prefix}_pick",
-    )
-    it = next(i for i in visible if i["finding"] == pick)
-    emoji, label = URG_REF[it["urgency"]]
-
-    top = st.columns([1, 4])
-    top[0].markdown(f"<div style='font-size:52px;text-align:center'>{emoji}</div>", unsafe_allow_html=True)
-    with top[1]:
-        st.subheader(it["finding"])
-        st.markdown(f"**Срочность:** {label}")
-
-    st.markdown("### 🔬 Что видно на исследовании")
-    st.write(it["picture"])
-    st.markdown("### 🧠 Что это значит")
-    st.write(it["means"])
-
-    if it["related"]:
-        st.markdown("### 🔗 Связанные диагнозы из базы")
-        for rel in it["related"]:
-            info = _KB.get(rel) if isinstance(_KB, dict) else None
-            if not info:
-                continue
-            with st.expander(rel):
-                st.write(info.get("description") or info.get("desc") or "описание не заполнено")
-                _spec, _adv = _get_recs(info)
-                if _adv:
-                    st.markdown("🩺 **Рекомендации:**")
-                    st.write(_adv)
-
-    st.markdown("### 🩺 Что делать")
-    st.success(it["advice"])
-    if it["urgency"] == "экстренно":
-        st.error("🚨 Эти признаки требуют неотложной помощи. Не откладывайте — вызывайте скорую.")
-    elif it["urgency"] == "срочно":
-        st.warning("⚠️ Обратитесь к врачу в ближайшие дни — состояние требует контроля.")
-
-_ref_x, _ref_e = st.tabs(["🦴 Рентген", "📈 ЭКГ"])
-with _ref_x:
-    st.caption("16 типовых находок: от нормы до экстренных состояний")
-    render_findings_ref(_load_ref("xray_findings.json"), prefix="ref_xray")
-with _ref_e:
-    st.caption("20 типовых заключений: что они значат и насколько срочно")
-    render_findings_ref(_load_ref("ecg_findings.json"), prefix="ref_ecg")
