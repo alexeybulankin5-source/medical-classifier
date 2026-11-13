@@ -537,7 +537,7 @@ with tab1:
                         urgency = data.get('urgency')
                         if is_urgent or urgency in ('emergency', 'call_ambulance'):
                             st.warning("⚠️ Данное состояние может требовать срочной медицинской помощи. Обратитесь к врачу немедленно или вызовите скорую.")
-                        elif urgency == 'doctor_visit':
+                        elif urgency == 'doctor_visit' and not _redflag_missing:
                             st.info("ℹ️ Рекомендуется плановая консультация врача для подтверждения диагноза.")
 
                         # --- Почему такой вывод (объяснимость, волна 10) ---
