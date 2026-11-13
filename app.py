@@ -440,11 +440,9 @@ def render_findings_ref(items, prefix):
 with tab1:
     st.header("📝 Анализ жалоб")
     _pending = st.session_state.pop("adaptive_pending", None)
-    if _pending:
-        st.session_state["btn_classify"] = True
     user_input = st.text_area("Опишите жалобы:", height=150, value=_pending or "")
     
-    if st.button("Определить диагноз", key="btn_classify"):
+    if _pending or st.button("Определить диагноз", key="btn_classify"):
         if user_input.strip():
             with st.spinner("Анализ..."):
                 try:
