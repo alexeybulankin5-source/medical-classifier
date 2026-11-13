@@ -3,6 +3,13 @@ import os
 
 import numpy as np
 import streamlit as st
+try:
+    from adaptive import render_followups
+except ImportError:
+    def render_followups(*args, **kwargs):
+        return None
+
+
 from sentence_transformers import SentenceTransformer
 from sklearn.metrics.pairwise import cosine_similarity
 
@@ -432,9 +439,12 @@ def render_findings_ref(items, prefix):
 
 with tab1:
     st.header("📝 Анализ жалоб")
-    user_input = st.text_area("Опишите жалобы:", height=150)
+    _pending = st.session_state.pop("adaptive_pending", None)
+    if _pending:
+        st.session_state["btn_classify"] = True
+    user_input = st.text_area("Опишите жалобы:", height=150, value=_pending or "")
     
-    if st.button("Определить диагноз"):
+    if st.button("Определить диагноз", key="btn_classify"):
         if user_input.strip():
             with st.spinner("Анализ..."):
                 try:
@@ -467,6 +477,8 @@ with tab1:
                                  f"(например, {_redflag_missing}). Если они выражены или нарастают — "
                                  "немедленно обратитесь к врачу или вызовите скорую помощь.")
                     
+                    st.session_state["adaptive_ctx"] = (user_input, top5)
+
                     # Логируем неизвестный запрос
                     log_unknown_query(user_input)
                     
@@ -571,6 +583,15 @@ with tab1:
 
                 except Exception as e:
                     st.error(f"Произошла ошибка во время анализа: {e!s}")
+
+    # --- Ada-слой: уточняющие вопросы (переживают rerun формы) ---
+    _q, _tops = st.session_state.get("adaptive_ctx", (None, None))
+    if _q and _q != st.session_state.get("adaptive_done_for"):
+        _enriched = render_followups(_q, _tops)
+        if _enriched:
+            st.session_state["adaptive_done_for"] = _enriched
+            st.session_state["adaptive_pending"] = _enriched
+            st.rerun()
 
 # --- ОБРАТНАЯ СВЯЗЬ: запись отзывов ---
 FEEDBACK_PATH = "feedback.csv"
