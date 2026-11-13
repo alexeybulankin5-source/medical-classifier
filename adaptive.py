@@ -3,7 +3,6 @@ import streamlit as st
 
 ADAPTIVE_ENABLED = True
 
-# questions: (ключ, текст, [(метка, фраза)], redflag)
 QUESTION_BANK = [
     {"match_any": ("горло", "тонзиллит", "фарингит", "ангина", "миндалин", "глотк"),
      "questions": [
@@ -39,7 +38,7 @@ QUESTION_BANK = [
           ("больше недели", "болеет больше недели")], False),
      ]},
     {"match_any": ("диарея", "гастроэнтерит", "кишечная инфекция", "амебиаз", "рвота",
-                   "язвенная болезнь", "кровотечение жкт"),
+                   "язвенная болезнь", "кровотечение жкт", "понос", "живот"),
      "questions": [
         ("gi_blood", "Есть ли кровь или слизь в стуле?",
          [("нет", "крови в стуле нет"), ("да", "кровь в стуле")], True),
@@ -62,7 +61,9 @@ QUESTION_BANK = [
          [("нет", "боль двусторонняя"),
           ("да", "пульсирующая боль с одной стороны головы")], False),
      ]},
-    {"match_any": ("диабет", "цистит", "нарушения мочеиспускания", "обезвоживание"),
+    {"match_any": ("диабет", "цистит", "нарушения мочеиспускания", "обезвоживание",
+                   "жажда", "моча", "мочеиспускан", "полиурия", "сухость во рту",
+                   "туалет", "сахарный"),
      "questions": [
         ("urin_thirst", "Жажда сильная, во рту пересохло?",
          [("нет", "жажды нет"), ("да", "сильная жажда, сухость во рту")], False),
@@ -95,22 +96,22 @@ GENERIC_QUESTIONS = [
       ("выше 38", "температура выше 38")], True),
 ]
 
+def _pick(group, max_q):
+    return [item[:3] for item in sorted(group["questions"], key=lambda x: not x[3])][:max_q]
+
 def get_followups(query, top_names, max_q=3):
     q = (query or "").lower().replace("ё", "е")
     tops = [(n or "").lower() for n in (top_names or [])[:5]]
-    picked = []
+    # 1) явный ключ в самом запросе — самый сильный сигнал
     for group in QUESTION_BANK:
-        if any(k in q for k in group["match_any"]) or any(
-                any(k in n for k in group["match_any"]) for n in tops):
-            for item in sorted(group["questions"], key=lambda x: not x[3]):
-                picked.append(item[:3])
-                if len(picked) >= max_q:
-                    return picked
-    for item in GENERIC_QUESTIONS:
-        picked.append(item[:3])
-        if len(picked) >= max_q:
-            break
-    return picked
+        if any(k in q for k in group["match_any"]):
+            return _pick(group, max_q)
+    # 2) кластер кандидатов: минимум 2 из топ-3 указывают на одну группу
+    for group in QUESTION_BANK:
+        if sum(any(k in n for k in group["match_any"]) for n in tops[:3]) >= 2:
+            return _pick(group, max_q)
+    # 3) одиночный лидер не заслуживает доверия — общие вопросы
+    return [item[:3] for item in GENERIC_QUESTIONS]
 
 def enrich_query(query, answers):
     parts = [query.strip().rstrip(".")]
