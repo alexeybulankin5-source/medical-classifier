@@ -500,18 +500,72 @@ with tab1:
                             pass
 
                         # --- конкретный диагноз важнее симптомного класса ---
-                        _SYMPTOMATIC_CLASSES = {"Боли в животе", "Боли в спине", "Боли в горле", "Боли в грудной клетке", "Головная боль", "Болезни сердца"}
-                        _SYMPTOMATIC_CLASSES_L = {c.lower() for c in _SYMPTOMATIC_CLASSES}
+                        _SYMPTOMATIC_CLASSES = {"Боли в животе", "Боли в спине", "Боли в горле",
+                            "Боли в грудной клетке", "Головная боль", "Болезни сердца",
+                            "Рвота", "Лихорадка", "Головокружение", "Запор",
+                            "Кожная сыпь у детей", "Повышение температуры тела у детей"}
+                        _SYMPTOMATIC_CLASSES_L = {x.lower() for x in _SYMPTOMATIC_CLASSES}
+                        _EXOTIC_L = {"птичий грипп", "лихорадка эбола", "желтая лихорадка",
+                            "жёлтая лихорадка", "лихорадка денге", "сенная лихорадка",
+                            "геморрагическая лихорадка с почечным синдромом", "глпс"}
+                        _SYMPTOM_PREFS_RAW = {
+                            "рвота": ["пищевое отравление", "острый аппендицит", "холера",
+                                "сотрясение головного мозга", "перитонит", "кишечная непроходимость"],
+                            "боли в животе": ["острый аппендицит", "перитонит", "панкреатит",
+                                "желчнокаменная болезнь", "пищевое отравление"],
+                            "боли в спине": ["остеохондроз поясничный", "грыжа поясничного",
+                                "миозит шеи", "пиелонефрит"],
+                            "боли в горле": ["хронический тонзиллит", "фарингит", "ларингит"],
+                            "боли в грудной клетке": ["инфаркт миокарда", "стенокардия",
+                                "межрёберная невралгия", "остеохондроз грудной"],
+                            "головная боль": ["мигрень", "головная боль напряжения",
+                                "синусит", "менингит", "гипертонический криз"],
+                            "головокружение": ["гипотония", "гипертонический криз",
+                                "железодефицитная анемия"],
+                            "запор": ["дисбактериоз", "синдром раздраженного кишечника"],
+                            "диарея": ["пищевое отравление", "кишечная инфекция у детей",
+                                "синдром раздраженного кишечника", "холера"],
+                            "лихорадка": ["грипп", "орви", "пневмония", "острый аппендицит"],
+                            "повышение температуры тела у детей": ["орви", "кишечная инфекция у детей"],
+                            "кожная сыпь у детей": ["ветрянка", "детская розеола"],
+                        }
+                        _SYMPTOM_PREFS = {}
+                        _ALL_LOWER = [n.lower() for n in CLASS_NAMES]
+                        for _sk, _subs in _SYMPTOM_PREFS_RAW.items():
+                            _hits = []
+                            for _sub in _subs:
+                                for _i, _nl in enumerate(_ALL_LOWER):
+                                    if _sub in _nl:
+                                        _hits.append(CLASS_NAMES[_i])
+                                        break
+                            if _hits:
+                                _SYMPTOM_PREFS[_sk] = _hits
                         try:
                             _sims_np = np.asarray(sims)
                             _order = np.argsort(_sims_np)[::-1]
                             if found_class_id.lower() in _SYMPTOMATIC_CLASSES_L:
-                                for _k in _order:
-                                    if CLASS_NAMES[_k].lower() not in _SYMPTOMATIC_CLASSES_L:
-                                        if float(_sims_np[_k]) >= float(best_score) - 0.10:
-                                            found_class_id = CLASS_NAMES[_k]
-                                            best_score = float(_sims_np[_k])
+                                _pref = None
+                                for _sk, _cands in _SYMPTOM_PREFS.items():
+                                    if _sk in found_class_id.lower():
+                                        _pref = _cands
                                         break
+                                _thr = float(best_score) - 0.10
+                                _best = None
+                                for _k in _order:
+                                    if float(_sims_np[_k]) < _thr:
+                                        break
+                                    _nl = CLASS_NAMES[_k].lower()
+                                    if _nl in _SYMPTOMATIC_CLASSES_L or _nl in _EXOTIC_L:
+                                        continue
+                                    if _pref is None:
+                                        _best = _k
+                                        break
+                                    if any(_s.lower() == _nl for _s in _pref):
+                                        _best = _k
+                                        break
+                                if _best is not None:
+                                    found_class_id = CLASS_NAMES[_best]
+                                    best_score = float(_sims_np[_best])
                         except Exception:
                             pass
                         data = kb[found_class_id]
