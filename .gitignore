@@ -1,5 +1,5 @@
 __pycache__/
-*.pyc
-
-model_fp32.onnx*
-model_fp32.onnx.data
+*.py[cod]
+.ipynb_checkpoints/
+*.log
+.venv/
