@@ -483,13 +483,40 @@ with tab1:
                     
                     # --- ВЫВОД РЕЗУЛЬТАТОВ ---
                     if best_score > 0.65:
+                        # --- конкретный диагноз важнее симптомного класса ---
+                        _SYMPTOMATIC_CLASSES = {"Боли в животе", "Боли в спине", "Боли в горле", "Боли в грудной клетке", "Головная боль", "Болезни сердца"}
+                        try:
+                            _sims_np = np.asarray(sims)
+                            _order = np.argsort(_sims_np)[::-1]
+                            if found_class_id in _SYMPTOMATIC_CLASSES:
+                                for _k in _order:
+                                    if CLASS_NAMES[_k] not in _SYMPTOMATIC_CLASSES:
+                                        if float(_sims_np[_k]) >= float(best_score) - 0.10:
+                                            found_class_id = CLASS_NAMES[_k]
+                                            best_score = float(_sims_np[_k])
+                                        break
+                        except Exception:
+                            pass
                         data = kb[found_class_id]
 
                         is_urgent = data.get('urgent', False)
                         diagnosis_text = data.get('desc', 'Описание диагноза не найдено в базе знаний.')
                         
                         st.subheader(f"Возможный диагноз: {found_class_id}")
+                        try:
+                            _sims_np2 = np.asarray(sims)
+                            _order2 = np.argsort(_sims_np2)[::-1]
+                            _top = [(CLASS_NAMES[k], float(_sims_np2[k])) for k in _order2[:3]]
+                            st.caption("Вероятности диагнозов: " + "; ".join(f"{n} — {s:.2f}" for n, s in _top))
+                        except Exception:
+                            pass
                         st.write(diagnosis_text)
+                        _full = diagnosis_text if isinstance(diagnosis_text, str) else str(diagnosis_text)
+                        _short = _full.strip()[:280].rsplit(' ', 1)[0] if len(_full.strip()) > 280 else _full.strip()
+                        st.write(_short + ('…' if len(_full.strip()) > 280 else ''))
+                        if len(_full.strip()) > 280:
+                            with st.expander("Показать полностью"):
+                                st.write(_full)
                         _lctx = st.session_state.get("lab_context")
                         if _lctx:
                             _pats = _lctx.get("patterns", [])
