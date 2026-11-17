@@ -525,7 +525,11 @@ with tab1:
                         try:
                             sims_np = np.asarray(sims)
                             order = np.argsort(sims_np)[::-1]
-                            alts = [(CLASS_NAMES[k], float(sims_np[k])) for k in order if CLASS_NAMES[k] != found_class_id][:3]
+                            top1 = max(float(sims_np[k]) for k in order)
+                            alts = []
+                            if top1 < 0.85:
+                                alts = [(CLASS_NAMES[k], float(sims_np[k])) for k in order
+                                         if CLASS_NAMES[k] != found_class_id and float(sims_np[k]) >= 0.65][:3]
                             if alts:
                                 st.markdown("**🔍 Возможные альтернативные диагнозы:**")
                                 for alt_name, alt_score in alts:
