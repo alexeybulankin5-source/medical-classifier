@@ -527,7 +527,6 @@ with tab1:
                                 st.error("🚨 Этот диагноз требует неотложной помощи. Вызовите скорую: 103 или 112.")
                         except Exception:
                             pass
-                        st.write(diagnosis_text)
                         _full = diagnosis_text if isinstance(diagnosis_text, str) else str(diagnosis_text)
                         _short = _full.strip()[:280].rsplit(' ', 1)[0] if len(_full.strip()) > 280 else _full.strip()
                         st.write(_short + ('…' if len(_full.strip()) > 280 else ''))
