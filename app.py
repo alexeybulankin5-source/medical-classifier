@@ -357,7 +357,7 @@ def _symptom_override(text, top5):
     return None
 
 
-tab1, tab2, tab3, tab4, tab5 = st.tabs(["📝 Жалобы", "🧪 Анализы", "🦴 Снимки (рентген)", "📈 ЭКГ", "📊 Аналитика"])
+tab1, tab2, tab3, tab4, tab5, tab6 = st.tabs(["📝 Жалобы", "🧪 Анализы", "🦴 Снимки (рентген)", "📈 ЭКГ", "📊 Аналитика", "💬 Второе мнение"])
 
 
 # --- СПРАВОЧНИКИ: функции для вкладок рентген/ЭКГ ---
@@ -1214,3 +1214,41 @@ with tab5:
         st.error(f"Ошибка отзывов: {e!s}")
 
 
+
+# --- ВТОРОЕ МНЕНИЕ: чат с YandexGPT ---
+with tab6:
+    from second_opinion import ask_yandex_gpt
+    st.subheader("💬 Второе мнение")
+    st.caption("Ассистент обсуждает случай, уже разобранный системой. Он не ставит диагнозы и не заменяет врача.")
+    _dx = st.session_state.get("last_dx")
+    if not _dx:
+        st.info("Сначала получите предварительный диагноз на вкладке «Жалобы» — чат работает с контекстом случая.")
+    else:
+        _dx_name = str(_dx.get("dx", ""))
+        _dx_score = str(_dx.get("score", 0.0))
+        _top5 = ", ".join(_dx.get("top5") or [])
+        _sys = ("Ты — ассистент «второго мнения» в медицинском приложении MedBot Duo. "
+                "Ты не ставишь диагнозы и не отменяешь вывод системы. "
+                "Система предсказала класс: " + _dx_name + " (сходство " + _dx_score + "). "
+                "Другие кандидаты: " + _top5 + ". "
+                "Отвечай на русском, кратко и по делу. "
+                "Если в описании случая есть экстренные признаки (длительная боль в груди, кровь, потеря сознания, признаки обезвоживания) — первым делом советуй вызвать скорую 103/112. "
+                "Не рекомендуй конкретные препараты и дозировки — только общие меры и обращение к врачу.")
+        if "chat_hist" not in st.session_state:
+            st.session_state["chat_hist"] = []
+        if st.button("🗑 Очистить диалог", key="so_clear"):
+            st.session_state["chat_hist"] = []
+            st.rerun()
+        for _m in st.session_state["chat_hist"]:
+            with st.chat_message("user" if _m["role"] == "user" else "assistant"):
+                st.markdown(_m["text"])
+        _q = st.chat_input("Ваш вопрос о диагнозе")
+        if _q:
+            st.session_state["chat_hist"].append({"role": "user", "text": _q})
+            with st.chat_message("user"):
+                st.markdown(_q)
+            with st.chat_message("assistant"):
+                with st.spinner("Думаю..."):
+                    _ans = ask_yandex_gpt(_sys, _q, st.session_state["chat_hist"][:-1])
+                st.markdown(_ans)
+            st.session_state["chat_hist"].append({"role": "assistant", "text": _ans})
