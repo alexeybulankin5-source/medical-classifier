@@ -578,7 +578,24 @@ with tab1:
                             _sims_np2 = np.asarray(sims)
                             _order2 = np.argsort(_sims_np2)[::-1]
                             _top = [(CLASS_NAMES[k], float(_sims_np2[k])) for k in _order2[:3]]
-                            st.caption("Вероятности диагнозов: " + "; ".join(f"{n} — {s:.2f}" for n, s in _top))
+                            try:
+                                _sims_np2 = np.asarray(sims)
+                                _order2 = np.argsort(_sims_np2)[::-1]
+                                _seen = {found_class_id.lower()}
+                                _top = [(found_class_id, float(best_score))]
+                                for _k in _order2:
+                                    _nl = CLASS_NAMES[_k].lower()
+                                    if _nl in _EXOTIC_L:
+                                        continue
+                                    if _nl in _seen:
+                                        continue
+                                    _seen.add(_nl)
+                                    _top.append((CLASS_NAMES[_k], float(_sims_np2[_k])))
+                                    if len(_top) >= 3:
+                                        break
+                                st.caption("Вероятности диагнозов: " + "; ".join(f"{n} — {s:.2f}" for n, s in _top))
+                            except Exception:
+                                pass
                             if found_class_id.lower() in _URGENT_CLASSES_L:
                                 st.error("🚨 Этот диагноз требует неотложной помощи. Вызовите скорую: 103 или 112.")
                         except Exception:
