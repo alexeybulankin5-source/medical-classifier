@@ -484,13 +484,14 @@ with tab1:
                     # --- ВЫВОД РЕЗУЛЬТАТОВ ---
                     if best_score > 0.65:
                         # --- при почти равных шансах выбираем более опасный диагноз ---
-                        _URGENT_CLASSES = {"Инфаркт миокарда", "Тромбоэмболия легочной артерии (ТЭЛА)", "Инсульт"}
+                        _URGENT_CLASSES = ['инсульт', 'инфаркт миокарда', 'тромбоэмболия лёгочной артерии']
+                        _URGENT_CLASSES_L = {c.lower() for c in _URGENT_CLASSES}
                         try:
                             _s3 = np.asarray(sims)
                             _o3 = np.argsort(_s3)[::-1]
-                            if found_class_id not in _URGENT_CLASSES:
+                            if found_class_id.lower() not in _URGENT_CLASSES_L:
                                 for _k in _o3:
-                                    if CLASS_NAMES[_k] in _URGENT_CLASSES:
+                                    if CLASS_NAMES[_k].lower() in _URGENT_CLASSES_L:
                                         if float(_s3[_k]) >= float(best_score) - 0.03:
                                             found_class_id = CLASS_NAMES[_k]
                                             best_score = float(_s3[_k])
@@ -500,12 +501,13 @@ with tab1:
 
                         # --- конкретный диагноз важнее симптомного класса ---
                         _SYMPTOMATIC_CLASSES = {"Боли в животе", "Боли в спине", "Боли в горле", "Боли в грудной клетке", "Головная боль", "Болезни сердца"}
+                        _SYMPTOMATIC_CLASSES_L = {c.lower() for c in _SYMPTOMATIC_CLASSES}
                         try:
                             _sims_np = np.asarray(sims)
                             _order = np.argsort(_sims_np)[::-1]
-                            if found_class_id in _SYMPTOMATIC_CLASSES:
+                            if found_class_id.lower() in _SYMPTOMATIC_CLASSES_L:
                                 for _k in _order:
-                                    if CLASS_NAMES[_k] not in _SYMPTOMATIC_CLASSES:
+                                    if CLASS_NAMES[_k].lower() not in _SYMPTOMATIC_CLASSES_L:
                                         if float(_sims_np[_k]) >= float(best_score) - 0.10:
                                             found_class_id = CLASS_NAMES[_k]
                                             best_score = float(_sims_np[_k])
@@ -523,7 +525,7 @@ with tab1:
                             _order2 = np.argsort(_sims_np2)[::-1]
                             _top = [(CLASS_NAMES[k], float(_sims_np2[k])) for k in _order2[:3]]
                             st.caption("Вероятности диагнозов: " + "; ".join(f"{n} — {s:.2f}" for n, s in _top))
-                            if found_class_id in _URGENT_CLASSES:
+                            if found_class_id.lower() in _URGENT_CLASSES_L:
                                 st.error("🚨 Этот диагноз требует неотложной помощи. Вызовите скорую: 103 или 112.")
                         except Exception:
                             pass
