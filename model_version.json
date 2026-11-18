@@ -1,5 +1,6 @@
 {
-  "model_version": "classifier-2392801",
-  "built": "2026-11-18",
-  "git": "2392801"
+ "model_version": "e5-small-prototypes-v2",
+ "built": "2026-11-18",
+ "git": "2392801",
+ "note": "протокол: passage:/query: e5, усреднение по train; +73 аугментации (влияние на frozen-test ~0, эффект протокола 24.9->63.2)"
 }
