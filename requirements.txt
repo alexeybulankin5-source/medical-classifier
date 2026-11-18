@@ -1,6 +1,7 @@
-streamlit
-sentence-transformers
-numpy
-scikit-learn
-joblib
-pypdf
+streamlit==1.67.0
+pandas==2.2.3
+scikit-learn==1.6.1
+numpy==2.4.6
+pyyaml==6.0.3
+requests==2.32.4
+pytest==8.4.2
