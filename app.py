@@ -582,7 +582,12 @@ with tab1:
                                 _sims_np2 = np.asarray(sims)
                                 _order2 = np.argsort(_sims_np2)[::-1]
                                 _seen = {found_class_id.lower()}
-                                _top = [(found_class_id, float(best_score))]
+                                _ovr_raw1 = CLASS_NAMES[_order2[0]] if len(_order2) else None
+                                _ovr_flag = _ovr_raw1 is not None and _ovr_raw1.lower() != found_class_id.lower()
+                                _ovr_sc = float(_sims_np2[CLASS_NAMES.index(found_class_id)]) if found_class_id in CLASS_NAMES else float(best_score)
+                                _top = [(found_class_id, _ovr_sc)]
+                                if _ovr_flag:
+                                    st.caption("Первая позиция определена правилом (красный флаг/оверрайд), а не сырым сходством")
                                 for _k in _order2:
                                     _nl = CLASS_NAMES[_k].lower()
                                     if _nl in _EXOTIC_L:
@@ -591,9 +596,9 @@ with tab1:
                                         continue
                                     _seen.add(_nl)
                                     _top.append((CLASS_NAMES[_k], float(_sims_np2[_k])))
-                                    if len(_top) >= 3:
+                                    if len(_top) >= 5:
                                         break
-                                st.caption("Вероятности диагнозов: " + "; ".join(f"{n} — {s:.2f}" for n, s in _top))
+                                st.caption("Вероятности диагнозов: " + "; ".join(f"{n} — {s:.2f}" for n, s in _top[:3]))
                             except Exception:
                                 pass
                             if found_class_id.lower() in _URGENT_CLASSES_L:
@@ -682,7 +687,13 @@ with tab1:
                                 st.markdown(f"- [{_sn}]({_ru}) — {_rd}")
                             st.caption("Ссылки ведут на клинические рекомендации и справочники; окончательную оценку делает врач.")
                         
-                        st.session_state["last_dx"] = {"text": user_input, "dx": found_class_id, "score": round(float(best_score), 2), "top5": list(top5)}
+                        try:
+                            _dx_top5 = [(t[0], float(t[1])) for t in _top] + \
+                                [(c, float(sims[CLASS_NAMES.index(c)])) for c in top5 if c not in [t[0] for t in _top]]
+                            _dx_top5 = _dx_top5[:5]
+                        except Exception:
+                            _dx_top5 = list(top5)
+                        st.session_state["last_dx"] = {"text": user_input, "dx": found_class_id, "score": round(float(best_score), 2), "top5": _dx_top5}
                         from safety import assess as _assess
                         def _fmt5(t):
                             _o = []
@@ -692,7 +703,7 @@ with tab1:
                         _fl = _assess(user_input)
                         st.session_state['last_case'] = {
                             'text': user_input,
-                            'top': _fmt5(top5),
+                            'top': _fmt5(_dx_top5),
                             'urgency': ('СРОЧНО: ' + '; '.join(f['message'] for f in _fl)) if _fl else 'без красных флагов',
                         }
                         
