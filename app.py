@@ -704,7 +704,7 @@ with tab1:
                         st.session_state['last_case'] = {
                             'text': user_input,
                             'top': _fmt5(_dx_top5),
-                            'urgency': ('СРОЧНО: ' + '; '.join(f['message'] for f in _fl)) if _fl else 'без красных флагов',
+                            'urgency': ('СРОЧНО: ' + '; '.join(f.get('message', f.get('title', 'красный флаг')) for f in _fl)) if _fl else 'без красных флагов',
                         }
                         
                         st.markdown("---")
