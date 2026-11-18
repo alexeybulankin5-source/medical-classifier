@@ -1229,5 +1229,10 @@ with tab5:
 
 # --- ВТОРОЕ МНЕНИЕ: чат, заземлённый на случай ---
 with tab6:
-    from second_opinion import render_second_opinion
-    render_second_opinion()
+    try:
+        from second_opinion import render_second_opinion
+        render_second_opinion()
+    except Exception as _so_err:
+        import traceback
+        st.error("Ошибка загрузки второго мнения:")
+        st.code(traceback.format_exc())
