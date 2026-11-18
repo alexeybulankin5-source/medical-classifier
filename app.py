@@ -683,6 +683,18 @@ with tab1:
                             st.caption("Ссылки ведут на клинические рекомендации и справочники; окончательную оценку делает врач.")
                         
                         st.session_state["last_dx"] = {"text": user_input, "dx": found_class_id, "score": round(float(best_score), 2), "top5": list(top5)}
+                        from safety import assess as _assess
+                        def _fmt5(t):
+                            _o = []
+                            for _x in list(t)[:3]:
+                                _o.append(f'{_x[0]} ({float(_x[1]):.2f})' if isinstance(_x, (list, tuple)) and len(_x) >= 2 else str(_x))
+                            return ', '.join(_o)
+                        _fl = _assess(user_input)
+                        st.session_state['last_case'] = {
+                            'text': user_input,
+                            'top': _fmt5(top5),
+                            'urgency': ('СРОЧНО: ' + '; '.join(f['message'] for f in _fl)) if _fl else 'без красных флагов',
+                        }
                         
                         st.markdown("---")
                         st.caption(f"Уверенность модели: {best_score:.2f}")
@@ -1215,40 +1227,7 @@ with tab5:
 
 
 
-# --- ВТОРОЕ МНЕНИЕ: чат с YandexGPT ---
+# --- ВТОРОЕ МНЕНИЕ: чат, заземлённый на случай ---
 with tab6:
-    from second_opinion import ask_yandex_gpt
-    st.subheader("💬 Второе мнение")
-    st.caption("Ассистент обсуждает случай, уже разобранный системой. Он не ставит диагнозы и не заменяет врача.")
-    _dx = st.session_state.get("last_dx")
-    if not _dx:
-        st.info("Сначала получите предварительный диагноз на вкладке «Жалобы» — чат работает с контекстом случая.")
-    else:
-        _dx_name = str(_dx.get("dx", ""))
-        _dx_score = str(_dx.get("score", 0.0))
-        _top5 = ", ".join(_dx.get("top5") or [])
-        _sys = ("Ты — ассистент «второго мнения» в медицинском приложении MedBot Duo. "
-                "Ты не ставишь диагнозы и не отменяешь вывод системы. "
-                "Система предсказала класс: " + _dx_name + " (сходство " + _dx_score + "). "
-                "Другие кандидаты: " + _top5 + ". "
-                "Отвечай на русском, кратко и по делу. "
-                "Если в описании случая есть экстренные признаки (длительная боль в груди, кровь, потеря сознания, признаки обезвоживания) — первым делом советуй вызвать скорую 103/112. "
-                "Не рекомендуй конкретные препараты и дозировки — только общие меры и обращение к врачу.")
-        if "chat_hist" not in st.session_state:
-            st.session_state["chat_hist"] = []
-        if st.button("🗑 Очистить диалог", key="so_clear"):
-            st.session_state["chat_hist"] = []
-            st.rerun()
-        for _m in st.session_state["chat_hist"]:
-            with st.chat_message("user" if _m["role"] == "user" else "assistant"):
-                st.markdown(_m["text"])
-        _q = st.chat_input("Ваш вопрос о диагнозе")
-        if _q:
-            st.session_state["chat_hist"].append({"role": "user", "text": _q})
-            with st.chat_message("user"):
-                st.markdown(_q)
-            with st.chat_message("assistant"):
-                with st.spinner("Думаю..."):
-                    _ans = ask_yandex_gpt(_sys, _q, st.session_state["chat_hist"][:-1])
-                st.markdown(_ans)
-            st.session_state["chat_hist"].append({"role": "assistant", "text": _ans})
+    from second_opinion import render_second_opinion
+    render_second_opinion()
