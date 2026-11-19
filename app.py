@@ -61,11 +61,12 @@ except Exception:
     _n_drafts = -1
 try:
     _n_recs = sum(1 for v in kb.get("classes", kb).values() if v.get("recommendations"))
-    _n_cls = len(kb.get("classes", kb))
+    _n_cls = len(kb.get("classes", kb))          # записей в базе знаний
+    _n_cls_model = len(CLASS_NAMES)               # классов в модели
 except Exception as _e:
     _n_recs = f'ERR {_e!r}'
     _n_cls = -1
-st.sidebar.caption(f"KB-версия: {_kb_md5} • классов: {_n_cls} • с рекомендациями: {_n_recs}")
+st.sidebar.caption(f"KB-версия: {_kb_md5} • классов в модели: {_n_cls_model} • записей в KB: {_n_cls} • с рекомендациями: {_n_recs}")
 
 # --- ДИСАМБИГУАЦИЯ ДАВЛЕНИЯ (правило сильнее сходств) ---
 import re as _re
