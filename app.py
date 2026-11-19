@@ -928,6 +928,11 @@ with tab2:
             except Exception as e:
                 st.error(f"Не удалось обработать файл: {e!s}")
 
+        else:
+            # файл удалён из загрузчика — чистим разобранный контекст анализов
+            if st.session_state.get('lab_context'):
+                st.session_state.pop('lab_context', None)
+                st.info('🧪 Разобранный анализ сброшен — загрузите новый файл или вставьте текст.')
         if st.button("🔍 Интерпретировать"):
             full = ((user_text or "") + "\n" + (file_text or "")).strip()
             if not full:
