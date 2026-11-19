@@ -39,13 +39,13 @@ def _case_text(case):
     parts = []
     if case:
         parts.append("КОНТЕКСТ СЛУЧАЯ ПОЛЬЗОВАТЕЛЯ (результат классификатора MedBot Duo):")
-        if case.get("text"):
+        if (case or {}).get("text"):
             parts.append("Жалобы: " + str(case["text"]))
-        if case.get("top"):
+        if (case or {}).get("top"):
             parts.append("Вероятные диагнозы: " + str(case["top"]))
-        if case.get("urgency"):
+        if (case or {}).get("urgency"):
             parts.append("Уровень срочности: " + str(case["urgency"]))
-        hits = assess(case.get("text", "") or "")
+        hits = assess((case or {}).get("text", "") or "")
         if hits:
             parts.append("Красные флаги, обнаруженные правилами: " +
                          "; ".join(f["message"] for f in hits))
@@ -111,9 +111,9 @@ def render_second_opinion():
 
     _hdr = []
     if case:
-        _hdr.append(f"**Жалобы:** {str(case.get('text', ''))[:200]}")
-        _hdr.append(f"**Вердикт классификатора:** {case.get('top', '—')}")
-        _hdr.append(f"**Срочность:** {case.get('urgency', '—')}")
+        _hdr.append(f"**Жалобы:** {str((case or {}).get('text', ''))[:200]}")
+        _hdr.append(f"**Вердикт классификатора:** {(case or {}).get('top', '—')}")
+        _hdr.append(f"**Срочность:** {(case or {}).get('urgency', '—')}")
     else:
         _hdr.append("**Контекст случая:** разобранные данные без жалоб (анализы / снимок / ЭКГ)")
     st.markdown("  \n".join(_hdr))
@@ -149,6 +149,6 @@ def render_second_opinion():
         with st.chat_message("assistant"):
             st.markdown(answer)
         log_turn(user_msg, answer,
-                 case_ctx={"urgency": case.get("urgency", ""),
-                           "top": case.get("top", "")},
+                 case_ctx={"urgency": (case or {}).get("urgency", ""),
+                           "top": (case or {}).get("top", "")},
                  model_version=model_version)
