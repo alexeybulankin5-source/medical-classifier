@@ -36,21 +36,38 @@ SYSTEM_PROMPT = """Ты — дружелюбный медицинский асс
 Запрещено: ставить окончательный диагноз, назначать рецептурные препараты с дозировками, обесценивать жалобы («это ерунда»), игнорировать вопрос ради общей инструкции."""
 
 def _case_text(case):
-    if not case:
-        return ""
-    parts = ["КОНТЕКСТ СЛУЧАЯ ПОЛЬЗОВАТЕЛЯ (результат классификатора MedBot Duo):"]
-    if case.get("text"):
-        parts.append("Жалобы: " + str(case["text"]))
-    if case.get("top"):
-        parts.append("Вероятные диагнозы: " + str(case["top"]))
-    if case.get("urgency"):
-        parts.append("Уровень срочности: " + str(case["urgency"]))
-    hits = assess(case.get("text", "") or "")
-    if hits:
-        parts.append("Красные флаги, обнаруженные правилами: " +
-                     "; ".join(f["message"] for f in hits))
-    return "\n".join(parts)
-
+    parts = []
+    if case:
+        parts.append("КОНТЕКСТ СЛУЧАЯ ПОЛЬЗОВАТЕЛЯ (результат классификатора MedBot Duo):")
+        if case.get("text"):
+            parts.append("Жалобы: " + str(case["text"]))
+        if case.get("top"):
+            parts.append("Вероятные диагнозы: " + str(case["top"]))
+        if case.get("urgency"):
+            parts.append("Уровень срочности: " + str(case["urgency"]))
+        hits = assess(case.get("text", "") or "")
+        if hits:
+            parts.append("Красные флаги, обнаруженные правилами: " +
+                         "; ".join(f["message"] for f in hits))
+    _lc = st.session_state.get("lab_context")
+    if _lc:
+        _lv = _lc.get("values") or {}
+        _lp = _lc.get("patterns") or []
+        if _lv or _lp:
+            _lt = "Анализы крови (распознанные показатели): " + "; ".join(str(k) + " = " + str(v) for k, v in _lv.items())
+            if _lp:
+                _lt += ". Обнаруженные паттерны: " + ", ".join(map(str, _lp))
+            _lt += ". Интерпретируй показатели в пределах своей роли: объясняй значения и отклонения от нормы, не ставь диагноз по анализам, при сомнении направляй к врачу."
+            if len(_lt) > 2000:
+                _lt = _lt[:2000]
+            parts.append(_lt)
+    _xt = st.session_state.get("xray_in") or ""
+    if _xt.strip():
+        parts.append("Заключение рентгена: " + _xt.strip())
+    _et = st.session_state.get("ecg_in") or ""
+    if _et.strip():
+        parts.append("Заключение ЭКГ: " + _et.strip())
+    return "\n".join(parts) if parts else ""
 def ask_yandex_gpt(system_text, user_text, history=None,
                    temperature=0.3, max_tokens=600):
     key = _api_key()
@@ -87,14 +104,19 @@ def render_second_opinion():
             "- **Телефон вашей поликлиники:** на стойке регистрации, на информационном стенде "
             "или на сайте вашей поликлиники — я его не знаю и не могу передать вызов")
     case = st.session_state.get("last_case")
-    if not case:
-        st.info("Сначала опишите жалобы во вкладке «Жалобы». Второе мнение даётся по вашему случаю, а не в вакууме.")
+    _lc_any = st.session_state.get("lab_context") or st.session_state.get("xray_in") or st.session_state.get("ecg_in")
+    if not case and not _lc_any:
+        st.info("Сначала опишите жалобы во вкладке «Жалобы» или разберите анализ, снимок или ЭКГ. Второе мнение даётся по вашему случаю, а не в вакууме.")
         return
 
-    st.markdown(
-        f"**Жалобы:** {str(case.get('text', ''))[:200]}  \n"
-        f"**Вердикт классификатора:** {case.get('top', '—')}  \n"
-        f"**Срочность:** {case.get('urgency', '—')}")
+    _hdr = []
+    if case:
+        _hdr.append(f"**Жалобы:** {str(case.get('text', ''))[:200]}")
+        _hdr.append(f"**Вердикт классификатора:** {case.get('top', '—')}")
+        _hdr.append(f"**Срочность:** {case.get('urgency', '—')}")
+    else:
+        _hdr.append("**Контекст случая:** разобранные данные без жалоб (анализы / снимок / ЭКГ)")
+    st.markdown("  \n".join(_hdr))
     st.divider()
 
     model_version = "unknown"
@@ -111,22 +133,6 @@ def render_second_opinion():
     if ctx:
         system_text += "\n\n" + ctx
 
-        # --- Контекст: разобранные анализы крови ---
-        try:
-            _lc = st.session_state.get('lab_context')
-            if _lc:
-                _lv = _lc.get('values') or {}
-                _lp = _lc.get('patterns') or []
-                if _lv or _lp:
-                    _lab_txt = 'Анализы крови (распознанные показатели): ' + '; '.join(str(k) + ' = ' + str(v) for k, v in _lv.items())
-                    if _lp:
-                        _lab_txt += '. Обнаруженные паттерны: ' + ', '.join(map(str, _lp))
-                    _lab_txt += '. Интерпретируй показатели в пределах своей роли: объясняй значения и отклонения от нормы, не ставь диагноз по анализам, при сомнении направляй к врачу.'
-                    if len(_lab_txt) > 2000:
-                        _lab_txt = _lab_txt[:2000]
-                    system_text += '\n\n' + _lab_txt
-        except Exception:
-            pass
 
     for m in st.session_state.so_messages:
         with st.chat_message(m["role"]):
