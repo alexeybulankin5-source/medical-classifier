@@ -933,6 +933,7 @@ with tab2:
             if st.session_state.get('lab_context'):
                 st.session_state.pop('lab_context', None)
                 st.info('🧪 Разобранный анализ сброшен — загрузите новый файл или вставьте текст.')
+            st.session_state.pop("so_messages", None)  # и историю чата тоже
         if st.button("🔍 Интерпретировать"):
             full = ((user_text or "") + "\n" + (file_text or "")).strip()
             if not full:
@@ -974,7 +975,9 @@ with tab2:
                     st.session_state["lab_context"] = {
                         "patterns": list(hits),
                         "values": dict(values),
+
                     }
+                    st.session_state.pop("so_messages", None)  # новый анализ — чат с чистого листа
 
                     if hits:
                         st.markdown("### 🔎 Возможные паттерны")
