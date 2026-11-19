@@ -111,6 +111,23 @@ def render_second_opinion():
     if ctx:
         system_text += "\n\n" + ctx
 
+        # --- Контекст: разобранные анализы крови ---
+        try:
+            _lc = st.session_state.get('lab_context')
+            if _lc:
+                _lv = _lc.get('values') or {}
+                _lp = _lc.get('patterns') or []
+                if _lv or _lp:
+                    _lab_txt = 'Анализы крови (распознанные показатели): ' + '; '.join(str(k) + ' = ' + str(v) for k, v in _lv.items())
+                    if _lp:
+                        _lab_txt += '. Обнаруженные паттерны: ' + ', '.join(map(str, _lp))
+                    _lab_txt += '. Интерпретируй показатели в пределах своей роли: объясняй значения и отклонения от нормы, не ставь диагноз по анализам, при сомнении направляй к врачу.'
+                    if len(_lab_txt) > 2000:
+                        _lab_txt = _lab_txt[:2000]
+                    system_text += '\n\n' + _lab_txt
+        except Exception:
+            pass
+
     for m in st.session_state.so_messages:
         with st.chat_message(m["role"]):
             st.markdown(m["text"])
