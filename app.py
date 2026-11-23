@@ -70,6 +70,7 @@ except Exception as _e:
     _n_recs = f'ERR {_e!r}'
     _n_cls = -1
 st.sidebar.caption(f"KB-версия: {_kb_md5} • классов в модели: {_n_cls_model} • записей в KB: {_n_cls} • с рекомендациями: {_n_recs}")
+st.sidebar.caption("BUILD: BUILD-2026-11-23-A")
 
 # --- ДИСАМБИГУАЦИЯ ДАВЛЕНИЯ (правило сильнее сходств) ---
 import re as _re
@@ -141,8 +142,8 @@ _REDFLAG_RULES = [
      ["кровохарканье", "боль при вдохе", "посинели губ", "синие губы", "обморок",
       "после операции", "после перелёта", "после перелета", "долго лежал", "долго лежала"],
      "тромбоэмболия лёгочной артерии"),
-    (["задержка", "задержки", "нет месячных", "месячных нет",
-      "не пришли месячные", "задержка месячных"],
+    (["нет месячных", "месячных нет",
+      "не пришли месячные", "месячные не пришли", "задержка месячных"],
      ["живот", "боли", "боль", "болит", "внизу", "тянет", "кровянист", "мажет"],
      "внематочная беременность"),
     (["справа внизу живота", "правая нижняя часть живота", "правый низ живота",
@@ -485,6 +486,7 @@ with tab1:
                                 _override = _tonsil_override(user_input, top5)
                                 if not _override:
                                     _override = _symptom_override(user_input, top5)
+                    _rule_override = bool(_override)
                     if _override and _override != found_class_id:
                         best_idx = CLASS_NAMES.index(_override)
                         best_score = sims[best_idx]
@@ -502,12 +504,12 @@ with tab1:
                     # --- ВЫВОД РЕЗУЛЬТАТОВ ---
                     if best_score > 0.55:
                         # --- при почти равных шансах выбираем более опасный диагноз ---
-                        _URGENT_CLASSES = ['инсульт', 'инфаркт миокарда', 'тромбоэмболия лёгочной артерии']
+                        _URGENT_CLASSES = list(dict.fromkeys(['инсульт', 'инфаркт миокарда', 'тромбоэмболия лёгочной артерии'] + [t for _, _, t in _REDFLAG_RULES]))
                         _URGENT_CLASSES_L = {c.lower() for c in _URGENT_CLASSES}
                         try:
                             _s3 = np.asarray(sims)
                             _o3 = np.argsort(_s3)[::-1]
-                            if found_class_id.lower() not in _URGENT_CLASSES_L:
+                            if not _rule_override and found_class_id.lower() not in _URGENT_CLASSES_L:
                                 for _k in _o3:
                                     if CLASS_NAMES[_k].lower() in _URGENT_CLASSES_L:
                                         if float(_s3[_k]) >= float(best_score) - 0.03:
