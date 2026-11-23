@@ -1,7 +1,8 @@
 {
-  "dataset_md5": "44dba796",
-  "ensemble_md5": "ec958458",
-  "test_set_md5": "bd4bd18f",
-  "holdout_top1": 0.7105,
-  "built": "2026-11-23 08:42"
+  "dataset_md5": "a8312478",
+  "ensemble_md5": "0cc77902",
+  "kb_md5": "e3747a8b",
+  "test_set_md5": "25a1b1a3",
+  "holdout_top1": 0.7301,
+  "built": "2026-11-23 09:25"
 }
