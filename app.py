@@ -49,7 +49,10 @@ def load_resources(_kb_md5=''):
 
 import hashlib as _h_cache
 _kb_md5 = _h_cache.md5(open(KB_PATH, "rb").read()).hexdigest()[:8]
+from pipeline import get_scores_for_names, warm
+
 kb, encoder, CLASS_NAMES, CLASS_EMBEDDINGS = load_resources(_kb_md5)
+warm()
 
 # --- ВЕРСИЯ ДАННЫХ (диагностика расхождений) ---
 import hashlib as _hl
@@ -157,6 +160,13 @@ _REDFLAG_RULES = [
       "кофейной гущей", "мелена"],
      [],
      "кровотечение ЖКТ"),
+    (["перекос", "перекош", "асимметрия лица"], [], "инсульт"),
+    (["речь невнятн", "речь смазыва", "речь нарушил", "заплетается речь"], [], "инсульт"),
+    (["пропала сила", "не смог поднять", "онемела рука", "онемела вся",
+      "потеря зрения", "потерял зрение", "потеряла зрение", "внезапно ослеп"],
+     ["внезапн", "вдруг", "резко", "час назад", "полчаса", "сразу"], "инсульт"),
+    (["нарушена координация", "нарушилась координация"],
+     ["внезапн", "вдруг", "резко"], "инсульт"),
 ]
 def _redflag_check(text, top_names):
     t = text.lower()
@@ -187,9 +197,9 @@ def log_unknown_query(query: str):
     
     try:
         user_emb = encoder.encode(["query: " + query])[0]
-        sims = cosine_similarity([user_emb], CLASS_EMBEDDINGS)[0]
+        sims = get_scores_for_names(query, CLASS_NAMES)
         
-        if np.max(sims) < 0.65:
+        if np.max(sims) < 0.55:
             try:
                 os.makedirs(os.path.dirname(LOG_PATH), exist_ok=True)
                 with open(LOG_PATH, 'a', encoding='utf-8') as f:
@@ -450,7 +460,7 @@ with tab1:
                 try:
                     # Кодируем запрос
                     user_emb = encoder.encode(["query: " + user_input])[0]
-                    sims = cosine_similarity([user_emb], CLASS_EMBEDDINGS)[0]
+                    sims = get_scores_for_names(query, CLASS_NAMES)
                     
                     best_idx = _tiebreak_pick(sims, user_input)
                     best_score = sims[best_idx]
@@ -483,7 +493,7 @@ with tab1:
                     log_unknown_query(user_input)
                     
                     # --- ВЫВОД РЕЗУЛЬТАТОВ ---
-                    if best_score > 0.65:
+                    if best_score > 0.55:
                         # --- при почти равных шансах выбираем более опасный диагноз ---
                         _URGENT_CLASSES = ['инсульт', 'инфаркт миокарда', 'тромбоэмболия лёгочной артерии']
                         _URGENT_CLASSES_L = {c.lower() for c in _URGENT_CLASSES}

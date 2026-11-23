@@ -1,7 +1,7 @@
 # -*- coding: utf-8 -*-
-"""Единый инференс-пайплайн MedBot: обучает ансамбль и отдаёт predict(text).
-Источник правды для всех экзаменов; сюда же переведём app.py."""
-import csv, random, re, warnings
+"""Единый инференс MedBot: ансамбль + score-вектор для app.py.
+Единственный источник правды для экзаменов и прода."""
+import csv, hashlib, os, pickle, random, re, warnings
 from collections import Counter, defaultdict
 import numpy as np
 warnings.filterwarnings("ignore")
@@ -10,15 +10,63 @@ from sklearn.linear_model import LogisticRegression
 
 ENCODER_NAME = "intfloat/multilingual-e5-small"
 CLIN = re.compile(r"\b(гипо|гипер|ит\b|синдром|недостаточн|обострени|рецидив|хроническ|терапи|патологи)\w*", re.IGNORECASE)
+PKL = "ensemble.pkl"
 _CACHE = {}
 
 def _norm(x):
     return x / (np.linalg.norm(x, axis=-1, keepdims=True) + 1e-9)
 
+def _ds_md5():
+    return hashlib.md5(open("dataset_full.csv", "rb").read()).hexdigest()[:8]
+
+def _final_vec(q, C):
+    models, router, all_cls = C["models"], C["router"], C["all_cls"]
+    rcls, colj = C["rcls"], C["colj"]
+    Xtr, train_cls, idxc_by = C["Xtr"], C["train_cls"], C["idxc_by"]
+    rw = router.predict_proba(q[None, :])[0]
+    proba = np.zeros(len(all_cls))
+    for b, clf in models.items():
+        p = clf.predict_proba(q[None, :])[0]
+        w = rw[rcls.index(b)]
+        for c_i, c in enumerate(clf.classes_):
+            proba[colj[c]] += w * p[c_i]
+    cosmax = np.zeros(len(all_cls))
+    for j, c in enumerate(all_cls):
+        if idxc_by.get(c):
+            cosmax[j] = (q @ Xtr[idxc_by[c]].T).max()
+    return 0.35 * proba + 0.65 * cosmax
+
+def _encode(text):
+    return _norm(np.asarray(_CACHE["sbert"].encode(["query: " + text[:400]],
+                convert_to_numpy=True), dtype=np.float32))[0]
+
+def score_vector(text):
+    """Вектор score по всем классам (порядок all_cls)."""
+    warm()
+    return _CACHE["all_cls"], _final_vec(_encode(text), _CACHE)
+
+def get_scores_for_names(text, names):
+    """Вектор score, выровненный по порядку names (напр. CLASS_NAMES из npz).
+    Классы вне ансамбля получают 0."""
+    all_cls, vec = score_vector(text)
+    idx = {c: j for j, c in enumerate(all_cls)}
+    out = np.zeros(len(names), dtype=np.float32)
+    for j, n in enumerate(names):
+        k = idx.get(str(n))
+        if k is not None:
+            out[j] = vec[k]
+    return out
+
+def predict(text):
+    all_cls, vec = score_vector(text)
+    order = np.argsort(-vec)
+    top5 = [all_cls[j] for j in order[:5]]
+    return top5[0], float(vec[order[0]]), top5
+
 def build():
     if _CACHE:
-        return _CACHE
-    rows = list(csv.reader(open("dataset_full.csv", encoding="utf-8")))
+        return
+    rows = list(csv.reader(open("dataset_full.csv", encoding="utf-8")))  # заголовка в файле нет — первая строка реальная
     texts = [r[0] for r in rows]; labels = [r[1] for r in rows]
     branch = ["mixed" if CLIN.search(t) else "colloquial" for t in texts]
     random.seed(42)
@@ -44,29 +92,32 @@ def build():
         models[b] = clf
     router = LogisticRegression(max_iter=2000); router.fit(Xb, bb)
     all_cls = sorted(by_cls)
-    Xtr = X[train]; train_cls = [labels[i] for i in train]
-    idxc_by = defaultdict(list)
-    for k, cc in enumerate(train_cls): idxc_by[cc].append(k)
+    colj = {c: j for j, c in enumerate(all_cls)}
     rcls = list(router.classes_)
+    idxc_by = defaultdict(list)
+    for k, cc in enumerate([labels[i] for i in train]): idxc_by[cc].append(k)
+    C = {"md5": _ds_md5(), "models": models, "router": router, "all_cls": all_cls, "colj": colj,
+         "rcls": rcls, "Xtr": X[train], "train_cls": [labels[i] for i in train],
+         "idxc_by": dict(idxc_by), "test_idx": sorted(test), "sbert": sbert}
+    _CACHE.update(C)
+    try:
+        pickle.dump({k: v for k, v in C.items() if k != "sbert"}, open(PKL, "wb"))
+    except Exception as e:
+        print("pkl не сохранён:", e)
 
-    def predict(text):
-        q = _norm(np.asarray(sbert.encode(["query: " + text[:400]], convert_to_numpy=True), dtype=np.float32))[0]
-        rw = router.predict_proba(q[None, :])[0]
-        proba = np.zeros(len(all_cls))
-        colj = {c: j for j, c in enumerate(all_cls)}
-        for b, clf in models.items():
-            p = clf.predict_proba(q[None, :])[0]
-            w = rw[rcls.index(b)]
-            for c_i, c in enumerate(clf.classes_):
-                proba[colj[c]] += w * p[c_i]
-        cosmax = np.zeros(len(all_cls))
-        for j, c in enumerate(all_cls):
-            if idxc_by.get(c):
-                cosmax[j] = (q @ Xtr[idxc_by[c]].T).max()
-        final = 0.35 * proba + 0.65 * cosmax
-        order = np.argsort(-final)
-        top5 = [all_cls[j] for j in order[:5]]
-        return top5[0], float(final[order[0]]), top5
-
-    _CACHE.update(predict=predict, texts=texts, labels=labels, test_idx=sorted(test))
-    return _CACHE
+def warm():
+    if _CACHE:
+        return
+    md5 = _ds_md5()
+    if os.path.exists(PKL):
+        try:
+            obj = pickle.load(open(PKL, "rb"))
+            if obj.get("md5") == md5:
+                obj["sbert"] = SentenceTransformer(ENCODER_NAME)
+                _CACHE.update(obj)
+                print("ансамбль загружен из ensemble.pkl (md5 совпал)")
+                return
+            print("ensemble.pkl устарел (md5 не совпал), пересборка...")
+        except Exception:
+            print("ensemble.pkl повреждён, пересборка...")
+    build()
