@@ -503,21 +503,6 @@ with tab1:
                     
                     # --- ВЫВОД РЕЗУЛЬТАТОВ ---
                     if best_score > 0.55:
-                        # --- при почти равных шансах выбираем более опасный диагноз ---
-                        _URGENT_CLASSES = list(dict.fromkeys(['инсульт', 'инфаркт миокарда', 'тромбоэмболия лёгочной артерии'] + [t for _, _, t in _REDFLAG_RULES]))
-                        _URGENT_CLASSES_L = {c.lower() for c in _URGENT_CLASSES}
-                        try:
-                            _s3 = np.asarray(sims)
-                            _o3 = np.argsort(_s3)[::-1]
-                            if not _rule_override and found_class_id.lower() not in _URGENT_CLASSES_L:
-                                for _k in _o3:
-                                    if CLASS_NAMES[_k].lower() in _URGENT_CLASSES_L:
-                                        if float(_s3[_k]) >= float(best_score) - 0.03:
-                                            found_class_id = CLASS_NAMES[_k]
-                                            best_score = float(_s3[_k])
-                                        break
-                        except Exception:
-                            pass
 
                         # --- конкретный диагноз важнее симптомного класса ---
                         _SYMPTOMATIC_CLASSES = {"Боли в животе", "Боли в спине", "Боли в горле",
@@ -621,6 +606,7 @@ with tab1:
                                 st.caption("Вероятности диагнозов: " + "; ".join(f"{n} — {s:.2f}" for n, s in _top[:3]))
                             except Exception:
                                 pass
+                            _URGENT_CLASSES_L = {c.lower() for c in ['инсульт', 'инфаркт миокарда', 'тромбоэмболия лёгочной артерии'] + [t for _, _, t in _REDFLAG_RULES]}
                             if found_class_id.lower() in _URGENT_CLASSES_L:
                                 st.error("🚨 Этот диагноз требует неотложной помощи. Вызовите скорую: 103 или 112.")
                         except Exception:
