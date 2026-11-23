@@ -1,6 +1,7 @@
 {
- "model_version": "e5-small-prototypes-v2",
- "built": "2026-11-18",
- "git": "2392801",
- "note": "протокол: passage:/query: e5, усреднение по train; +73 аугментации (влияние на frozen-test ~0, эффект протокола 24.9->63.2)"
+  "dataset_md5": "44dba796",
+  "ensemble_md5": "ec958458",
+  "test_set_md5": "bd4bd18f",
+  "holdout_top1": 0.7105,
+  "built": "2026-11-23 08:42"
 }
