@@ -467,7 +467,7 @@ with tab1:
                 try:
                     # Кодируем запрос
                     user_emb = encoder.encode(["query: " + user_input])[0]
-                    sims = get_scores_for_names(query, CLASS_NAMES)
+                    sims = get_scores_for_names(user_input, CLASS_NAMES)
                     
                     best_idx = _tiebreak_pick(sims, user_input)
                     best_score = sims[best_idx]
