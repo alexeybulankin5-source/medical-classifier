@@ -919,6 +919,23 @@ with tab2:
                         from PyPDF2 import PdfReader
                     import io as _io
                     file_text = "".join((page.extract_text() or "") for page in PdfReader(_io.BytesIO(file_bytes)).pages)
+                    if len(file_text.strip()) < 20:  # скан без текстового слоя — пробуем OCR
+                        try:
+                            import pymupdf, pytesseract
+                            from PIL import Image as _Image
+                            _doc = pymupdf.open(stream=file_bytes, filetype="pdf")
+                            _ocr_pages = []
+                            for _pg in _doc:
+                                _pix = _pg.get_pixmap(dpi=300)
+                                _img = _Image.open(_io.BytesIO(_pix.tobytes("png")))
+                                _ocr_pages.append(pytesseract.image_to_string(_img, lang="rus"))
+                            _doc.close()
+                            _ocr = "\n".join(_ocr_pages).strip()
+                            if _ocr:
+                                file_text = _ocr
+                                st.info("В PDF нет текстового слоя — текст распознан через OCR (tesseract, rus). Проверьте распознанные значения ниже.")
+                        except Exception as _e_ocr:
+                            st.warning(f"OCR для PDF не удался: {_e_ocr!s}. Вставьте текст анализа вручную.")
                 elif uploaded_file.type.startswith("image/"):
                     try:
                         import pytesseract
