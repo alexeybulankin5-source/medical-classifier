@@ -50,6 +50,7 @@ def load_resources(_kb_md5=''):
 import hashlib as _h_cache
 _kb_md5 = _h_cache.md5(open(KB_PATH, "rb").read()).hexdigest()[:8]
 from pipeline import get_scores_for_names, warm
+import pipeline as pl
 
 kb, encoder, CLASS_NAMES, CLASS_EMBEDDINGS = load_resources(_kb_md5)
 warm()
@@ -501,8 +502,18 @@ with tab1:
                     # Логируем неизвестный запрос
                     log_unknown_query(user_input)
                     
-                    # --- ВЫВОД РЕЗУЛЬТАТОВ ---
-                    if best_score > 0.55:
+                    # --- ВЫВОД РЕЗУЛЬТАТОВ: danger -> confident -> направления ---
+                    p = pl.score_parts(user_input, np.asarray(sims))
+                    if p["danger"]:
+                        st.error("🚨 В ваших жалобах есть признаки возможного острого состояния. "
+                                 "Вызовите скорую: [103](tel:103) или [112](tel:112). "
+                                 "Не добирайтесь до больницы сами.")
+                        st.session_state["last_case"] = {
+                            'text': user_input,
+                            'top': ', '.join(top5[:3]),
+                            'urgency': 'СРОЧНО: признаки острого состояния — скорая',
+                        }
+                    if p["confident"] or (_override and best_score >= 0.30):
 
                         # --- конкретный диагноз важнее симптомного класса ---
                         _SYMPTOMATIC_CLASSES = {"Боли в животе", "Боли в спине", "Боли в горле",
@@ -673,7 +684,7 @@ with tab1:
 
                         # --- Почему такой вывод (объяснимость, волна 10) ---
                         with st.expander("🧭 Почему такой вывод"):
-                            st.markdown(f"- Запрос распознан как **{found_class_id}**, сходство **{best_score:.2f}**; порог показа диагноза — 0.65")
+                            st.markdown(f"- Запрос распознан как **{found_class_id}**, сходство **{best_score:.2f}**; порог: score ≥ {pl.MIN_SCORE}, отрыв от второго ≥ {pl.MIN_MARGIN}")
                             _pairs = [(c, float(sims[CLASS_NAMES.index(c)])) for c in top5]
                             st.markdown("- Топ-5 кандидатов: " + "; ".join(f"{c} ({s:.2f})" for c, s in _pairs))
                             if _override:
@@ -726,7 +737,7 @@ with tab1:
                             _fb_record("жалобы", found_class_id, "👎")
                             st.toast("Записал — посмотрим в аналитику.")
                     else:
-                        st.info("Система не смогла определить диагноз с достаточной уверенностью (порог показа диагноза — 0.65). Это не значит, что жалобы незначительны — просто текст слишком неоднозначен.")
+                        st.info("Система не смогла определить диагноз с достаточной уверенностью (порог: score ≥ 0.55 и отрыв от второго ≥ 0.08). Это не значит, что жалобы незначительны — просто текст слишком неоднозначен.")
                         _sims_np = np.asarray(sims)
                         _order = np.argsort(_sims_np)[::-1]
                         _cands = [(CLASS_NAMES[k], float(_sims_np[k])) for k in _order[:3]]
@@ -737,6 +748,13 @@ with tab1:
                             st.caption("Сходство ниже порога, поэтому точный диагноз не называется. Ответьте на уточняющие вопросы ниже — это заметно улучшит точность.")
                         st.warning("⚠️ Если состояние тяжёлое или быстро ухудшается — не ждите точной классификации: обратитесь к врачу или вызовите скорую (103/112).")
                         st.session_state["adaptive_ctx"] = (user_input, [c for c, s in _cands])
+                        st.session_state["last_case"] = {
+                            'text': user_input,
+                            'top': ', '.join(n for n, s in _cands),
+                            'urgency': ('СРОЧНО: признаки острого состояния — скорая'
+                                        if p["danger"] else
+                                        'неопределённо: классификатор не уверился'),
+                        }
                         log_unknown_query(user_input)
 
                 except Exception as e:
