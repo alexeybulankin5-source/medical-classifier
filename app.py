@@ -859,7 +859,7 @@ def _parse_region(t, names):
                 else:
                     if not (0 <= v <= 100 * (p.get("high") or 1)):
                         continue
-                if t[ne_:ne_ + 3].lstrip().startswith("%") and name in _PCT_CELLS:
+                if name in _PCT_CELLS and (t[ne_:ne_ + 3].lstrip().startswith("%") or "%" in gap or v > 15):
                     _pct[name] = v
                     break
                 found[name] = v

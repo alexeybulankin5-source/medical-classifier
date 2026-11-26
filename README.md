@@ -55,3 +55,8 @@ tests_regression.py, tests/test_safety.py, tests/test_suite.json, tests/stress_b
 - История изменений — в CHANGELOG.md, планы — в ROADMAP.md.
 
 (c) 2026 Алексей Буланкин. Проект в активной разработке.
+
+### OCR для сканов
+
+На Streamlit Cloud tesseract ставится автоматически из packages.txt.
+Для локального запуска нужен системный tesseract: на Linux — sudo apt-get install tesseract-ocr tesseract-ocr-rus, на Windows — установщик UB Mannheim (отметьте Russian в языковых пакетах).
