@@ -6,3 +6,4 @@ __pycache__/
 cls_stats.json
 unknown_queries.txt
 *.pdf
+dataset_full_backup.csv
