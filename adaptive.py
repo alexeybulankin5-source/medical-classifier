@@ -196,11 +196,23 @@ HEAD_ADJUST = {
         ("мигрень", +0.03)],
 }
 
+_ANSWER_CANON = {
+    ("head_neck", "да"): "подбородок к груди прижимается свободно",
+    ("head_neck", "нет"): "не могу прижать подбородок к груди",
+    ("head_light", "да"): "светобоязнь, звуки и свет раздражают",
+    ("head_light", "нет"): "светобоязни нет, звуки не раздражают",
+    ("head_veg", "да"): "давление скачет, шум в ушах, слабость накатывает",
+    ("head_veg", "нет"): "давление не скачет, шума в ушах и накатывающей слабости нет",
+}
+
+
 def rerank(scores_by_name, answers):
     """Детерминированная коррекция скоров по ответам второго тура.
     scores_by_name: {имя класса: score}; answers: {ключ вопроса: фраза}.
     Возвращает новый словарь, скоры клипуются в [0, 1]."""
     out = {str(n): float(s) for n, s in (scores_by_name or {}).items()}
+    answers = {k: _ANSWER_CANON.get((k, (v or "").strip().lower()), v)
+            for k, v in (answers or {}).items()}
     for key, phrase in (answers or {}).items():
         for (k, p), deltas in HEAD_ADJUST.items():
             if key == k and (phrase or "") == p:
