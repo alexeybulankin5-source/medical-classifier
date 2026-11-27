@@ -164,6 +164,9 @@ def check_rigidity_flag():
 
 import numpy as np
 import pipeline as _pl
+# REGRESSION_WARM
+if 'all_cls' not in getattr(_pl, '_CACHE', {}):
+    _pl.warm()
 def test_weather_headache():
     check_weather_headache()
 
