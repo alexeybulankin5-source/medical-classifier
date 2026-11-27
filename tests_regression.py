@@ -131,3 +131,41 @@ def run_all(verbose=True):
 if __name__ == "__main__":
     res = run_all()
     sys.exit(0 if all(r[0] for r in res) else 1)
+
+import adaptive as _ad
+
+def check_weather_headache():
+    """Погодная голова: триада "всё нет" -> уверенная ГБН, без ложной тревоги."""
+    q = 'болит голова когда идёт снег. симптомы появились меньше суток назад. температуры нет. '         'подбородок к груди прижимается свободно. светобоязни нет, звуки не раздражают. '         'давление не скачет, шума в ушах и накатывающей слабости нет'
+    ans = {'head_neck': 'подбородок к груди прижимается свободно',
+           'head_light': 'светобоязни нет, звуки не раздражают',
+           'head_veg': 'давление не скачет, шума в ушах и накатывающей слабости нет'}
+    names = _pl._CACHE['all_cls']
+    s = np.asarray(_pl.get_scores_for_names(q, names))
+    adj = _ad.rerank(dict(zip(names, s)), ans)
+    top = sorted(adj, key=adj.get, reverse=True)
+    vec = np.asarray([adj[n] for n in names])
+    p = _pl.score_parts(q, vec)
+    assert top[0] == 'головная боль напряжения', f'топ-1 = {top[0]}'
+    assert round(adj[top[0]] - adj[top[1]], 2) >= 0.08, f'отрыв = {adj[top[0]] - adj[top[1]]:.2f}'
+    assert p['danger'] is False, 'ложная тревога на негативных ответах'
+    assert p['confident'] is True, 'триада не дала уверенности'
+
+def check_rigidity_flag():
+    """Ригидность шеи -> danger True, без уверенного вердикта."""
+    q = 'болит голова. не могу прижать подбородок к груди, ригидность мышц шеи. '         'светобоязнь, звуки и свет раздражают'
+    names = _pl._CACHE['all_cls']
+    s = np.asarray(_pl.get_scores_for_names(q, names))
+    p = _pl.score_parts(q, s)
+    assert p['danger'] is True, 'ригидность не зажгла danger'
+    assert p['confident'] is False, 'при danger нельзя называть уверенный диагноз'
+
+# примечание: importlib.reload модулей делать ДО _pl.warm(), иначе _CACHE стирается
+
+import numpy as np
+import pipeline as _pl
+def test_weather_headache():
+    check_weather_headache()
+
+def test_rigidity_flag():
+    check_rigidity_flag()

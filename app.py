@@ -471,6 +471,16 @@ with tab1:
                     user_emb = encoder.encode(["query: " + user_input])[0]
                     sims = get_scores_for_names(user_input, CLASS_NAMES)
                     
+                    # --- переранжировка по ответам уточняющих вопросов ---
+                    _ans = st.session_state.pop("adaptive_answers", None)
+                    if _ans:
+                        try:
+                            import adaptive as _adaptive
+                            _by = {str(CLASS_NAMES[j]): float(sims[j]) for j in range(len(CLASS_NAMES))}
+                            _adj = _adaptive.rerank(_by, _ans)
+                            sims = np.asarray([_adj.get(str(n), 0.0) for n in CLASS_NAMES], dtype=np.float32)
+                        except Exception as _e:
+                            st.warning(f"переранжировка пропущена: {_e}")
                     best_idx = _tiebreak_pick(sims, user_input)
                     best_score = sims[best_idx]
                     if is_gibberish_query(user_input):
@@ -498,6 +508,7 @@ with tab1:
                                  "немедленно обратитесь к врачу или вызовите скорую помощь.")
                     
                     st.session_state["adaptive_ctx"] = (user_input, top5)
+                    st.session_state["adaptive_tours"] = 0
 
                     # Логируем неизвестный запрос
                     log_unknown_query(user_input)
@@ -748,6 +759,7 @@ with tab1:
                             st.caption("Сходство ниже порога, поэтому точный диагноз не называется. Ответьте на уточняющие вопросы ниже — это заметно улучшит точность.")
                         st.warning("⚠️ Если состояние тяжёлое или быстро ухудшается — не ждите точной классификации: обратитесь к врачу или вызовите скорую (103/112).")
                         st.session_state["adaptive_ctx"] = (user_input, [c for c, s in _cands])
+                        st.session_state["adaptive_tours"] = 0
                         st.session_state["last_case"] = {
                             'text': user_input,
                             'top': ', '.join(n for n, s in _cands),
@@ -763,11 +775,16 @@ with tab1:
     # --- Ada-слой: уточняющие вопросы (переживают rerun формы) ---
     _q, _tops = st.session_state.get("adaptive_ctx", (None, None))
     if _q and _q != st.session_state.get("adaptive_done_for"):
-        _enriched = render_followups(_q, _tops)
-        if _enriched:
-            st.session_state["adaptive_done_for"] = _enriched
-            st.session_state["adaptive_pending"] = _enriched
-            st.rerun()
+        if st.session_state.get("adaptive_tours", 0) >= 2:
+            st.info("Уточняющих вопросов больше нет: эти состояния похожи по симптомам, "
+                    "отличить их без осмотра нельзя. Ниже — направления, куда стоит обратиться.")
+        else:
+            st.session_state["adaptive_tours"] = st.session_state.get("adaptive_tours", 0) + 1
+            _enriched = render_followups(_q, _tops)
+            if _enriched:
+                st.session_state["adaptive_done_for"] = _enriched
+                st.session_state["adaptive_pending"] = _enriched
+                st.rerun()
 
 # --- ОБРАТНАЯ СВЯЗЬ: запись отзывов ---
 FEEDBACK_PATH = "feedback.csv"
