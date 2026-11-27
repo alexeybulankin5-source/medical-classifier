@@ -169,8 +169,8 @@ def render_followups(query, top_names):
         return None
     if submit and any(v for v in answers.values()):
         st.session_state["adaptive_done_for"] = query
-        st.session_state["adaptive_answers"] = {k: v[1] for k, v in answers.items() if v}
-        return enrich_query(query, {k: v[1] for k, v in answers.items() if v})
+        st.session_state["adaptive_answers"] = {k: _ans_val(v) for k, v in answers.items() if v}
+        return enrich_query(query, {k: _ans_val(v) for k, v in answers.items() if v})
     return None
 
 
@@ -227,3 +227,26 @@ def rerank(scores_by_name, answers):
             and "головная боль напряжения" in out:
         out["головная боль напряжения"] = min(1.0, out["головная боль напряжения"] + 0.05)
     return out
+
+
+def enrich_query(query, answers):
+    """Обогащение текста каноническими фразами (переопределяет старую версию)."""
+    parts = []
+    for k, v in (answers or {}).items():
+        v = (v or '').strip().lower()
+        parts.append(_ANSWER_CANON.get((k, (v or "").strip().lower()), str(v)))
+    return (query or '').strip() + '. ' + '. '.join(parts)
+
+
+def _ans_val(v):
+    """Фраза ответа из кортежа-опции; строку возвращает как есть."""
+    if isinstance(v, (tuple, list)):
+        return str(v[1]) if len(v) > 1 else str(v[0])
+    return str(v)
+
+
+# канонизация фраз формы: вариант из radio -> каноническая фраза rerank
+for _k, _variant, _canon in [
+    ("head_light", "светобоязни нет", "светобоязни нет, звуки не раздражают"),
+]:
+    _ANSWER_CANON[(_k, _variant.strip().lower())] = _canon
